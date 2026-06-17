@@ -280,5 +280,3 @@ const Labour = () => {
 };
 
 export default Labour;
-
-export default Labour;
