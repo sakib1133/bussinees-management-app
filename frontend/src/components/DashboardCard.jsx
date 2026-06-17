@@ -8,17 +8,17 @@ const DashboardCard = ({ title, amount, icon, color = 'blue', loading = false })
   };
 
   return (
-    <div className={`border-2 rounded-lg p-6 ${colorStyles[color]}`}>
+    <div className={`border-2 rounded-lg p-4 sm:p-6 ${colorStyles[color]}`}>
       <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-semibold text-gray-600 mb-2">{title}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-semibold text-gray-600 mb-2 truncate">{title}</p>
           {loading ? (
-            <div className="h-8 w-24 bg-gray-300 rounded animate-pulse"></div>
+            <div className="h-6 sm:h-8 w-20 sm:w-24 bg-gray-300 rounded animate-pulse"></div>
           ) : (
-            <p className="text-3xl font-bold">₹{amount?.toFixed(2) || '0.00'}</p>
+            <p className="text-xl sm:text-3xl font-bold truncate">₹{amount?.toFixed(2) || '0.00'}</p>
           )}
         </div>
-        <div className="text-4xl">{icon}</div>
+        <div className="text-2xl sm:text-4xl ml-2 flex-shrink-0">{icon}</div>
       </div>
     </div>
   );
