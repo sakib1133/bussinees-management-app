@@ -1,30 +1,32 @@
 services:
-  # Backend Service
+  # Backend Service - Free Plan
   - type: web
     name: village-khata-manager-backend
     env: node
-    plan: starter
+    plan: free
+    runtime: "20"
     buildCommand: cd backend && npm install && npm run prisma:generate
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: "10000"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
       - key: DATABASE_URL
         fromDatabase:
           name: village-khata-manager-db
           property: connectionString
-      - key: JWT_SECRET
-        sync: false
-      - key: JWT_EXPIRES_IN
-        value: 7d
-      - key: PORT
-        value: 5000
 
-  # Frontend Service - Served as Static Site
+  # Frontend Service - Free Plan
   - type: web
     name: village-khata-manager-frontend
     env: node
-    plan: starter
+    plan: free
+    runtime: "20"
     buildCommand: cd frontend && npm install && npm run build
     startCommand: npx serve -s frontend/dist -l 3000
     envVars:
