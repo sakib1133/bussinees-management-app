@@ -8,6 +8,8 @@ const medicineRoutes = require('./routes/medicineRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const labourRoutes = require('./routes/labourRoutes');
 const salaryRoutes = require('./routes/salaryRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use('/api/medicines', medicineRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/labour', labourRoutes);
 app.use('/api/salary', salaryRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/reports', reportRoutes);
 
 app.get('/', (req, res) => {
   res.json({

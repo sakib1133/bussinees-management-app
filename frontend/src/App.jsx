@@ -9,6 +9,8 @@ import Sales from './pages/Sales';
 import Medicine from './pages/Medicine';
 import Labour from './pages/Labour';
 import LabourDetails from './pages/LabourDetails';
+import Expenses from './pages/Expenses';
+import Reports from './pages/Reports';
 
 const APP_VERSION = '1.0.2'; // Update this when you make changes
 
@@ -71,6 +73,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <LabourDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <ProtectedRoute>
+                <Expenses />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <Reports />
               </ProtectedRoute>
             }
           />
