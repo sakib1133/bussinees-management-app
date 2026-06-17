@@ -20,11 +20,13 @@ services:
       - key: PORT
         value: 5000
 
-  # Frontend Service
+  # Frontend Service - Served as Static Site
   - type: web
     name: village-khata-manager-frontend
+    env: node
+    plan: starter
     buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
+    startCommand: npx serve -s frontend/dist -l 3000
     envVars:
       - key: VITE_API_URL
         value: https://village-khata-manager-backend.onrender.com/api
