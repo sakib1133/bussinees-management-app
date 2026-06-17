@@ -10,7 +10,7 @@ import Medicine from './pages/Medicine';
 import Labour from './pages/Labour';
 import LabourDetails from './pages/LabourDetails';
 
-const APP_VERSION = '1.0.1'; // Update this when you make changes
+const APP_VERSION = '1.0.2'; // Update this when you make changes
 
 function App() {
   useEffect(() => {
