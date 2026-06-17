@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -104,6 +106,16 @@ const Login = () => {
           </button>
         </form>
 
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setShowForgotPassword(true)}
+            className="text-sm sm:text-base text-blue-600 hover:text-blue-800 font-semibold"
+          >
+            Forgot Password?
+          </button>
+        </div>
+
         <div className="mt-6 text-center text-sm sm:text-base text-gray-600">
           Don't have an account?{' '}
           <Link to="/register" className="text-blue-600 hover:text-blue-800 font-semibold">
@@ -111,6 +123,10 @@ const Login = () => {
           </Link>
         </div>
       </div>
+
+      {showForgotPassword && (
+        <ForgotPasswordModal onClose={() => setShowForgotPassword(false)} />
+      )}
     </div>
   );
 };
