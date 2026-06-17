@@ -21,7 +21,7 @@ services:
         value: 5000
 
   # Frontend Service
-  - type: static-site
+  - type: web
     name: village-khata-manager-frontend
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
