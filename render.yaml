@@ -4,7 +4,7 @@ services:
     name: village-khata-manager-backend
     env: node
     plan: free
-    buildCommand: cd backend && npm install && npx prisma migrate deploy && npm run prisma:generate
+    buildCommand: cd backend && npm install && npm run prisma:generate
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
@@ -37,3 +37,4 @@ databases:
     user: khata_user
     region: oregon
     plan: free
+ change this
