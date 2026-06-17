@@ -21,9 +21,13 @@ Production-ready backend for Village Khata Manager with MySQL database, JWT auth
     /controllers
       authController.js
       dashboardController.js
+      expenseController.js
+      reportController.js
     /routes
       authRoutes.js
       dashboardRoutes.js
+      expenseRoutes.js
+      reportRoutes.js
     /middlewares
       auth.js
     /config
@@ -204,6 +208,75 @@ The server will start on port 5000 (or the port specified in `.env`).
 
 **Note:** All values are calculated from the MySQL database using SQL aggregation queries (SUM). No frontend calculations are performed.
 
+### Expenses (New)
+
+#### Get All Expenses (Protected)
+- **GET** `/api/expenses`
+- **Query Parameters:** `type`, `startDate`, `endDate`, `search`
+- **Response:** Array of expense objects
+
+#### Get Expense Statistics (Protected)
+- **GET** `/api/expenses/statistics`
+- **Response:**
+  ```json
+  {
+    "totalExpenses": 5000,
+    "todayExpenses": 500,
+    "monthExpenses": 2500
+  }
+  ```
+
+#### Create Expense (Protected)
+- **POST** `/api/expenses`
+- **Body:**
+  ```json
+  {
+    "expenseType": "Diesel",
+    "amount": 1500,
+    "description": "Fuel for generator",
+    "date": "2024-01-15"
+  }
+  ```
+
+#### Update Expense (Protected)
+- **PUT** `/api/expenses/:id`
+- **Body:** Same as create
+
+#### Delete Expense (Protected)
+- **DELETE** `/api/expenses/:id`
+
+### Reports (New)
+
+#### Get Financial Report (Protected)
+- **GET** `/api/reports/financial?startDate=2024-01-01&endDate=2024-01-31`
+- **Response:**
+  ```json
+  {
+    "totalSales": 50000,
+    "labourExpense": 15000,
+    "medicineExpense": 8000,
+    "otherExpenses": 5000,
+    "totalExpenses": 28000,
+    "netProfit": 22000
+  }
+  ```
+
+#### Get Sales Trend (Protected)
+- **GET** `/api/reports/sales-trend?days=30`
+- **Response:** Array of daily sales data
+
+#### Get Expense Trend (Protected)
+- **GET** `/api/reports/expense-trend?days=30`
+- **Response:** Array of daily expense data
+
+#### Get Profit Trend (Protected)
+- **GET** `/api/reports/profit-trend?days=30`
+- **Response:** Array of daily profit data
+
+#### Get Expense Breakdown (Protected)
+- **GET** `/api/reports/expense-breakdown?startDate=2024-01-01&endDate=2024-01-31`
+- **Response:** Array of expenses grouped by type
+
 ## Database Schema
 
 ### Users
@@ -240,7 +313,8 @@ The server will start on port 5000 (or the port specified in `.env`).
 
 ### Expenses
 - `id` - Primary key
-- `amount` - Other expense (Decimal)
+- `expenseType` - Type of expense (Diesel, Food, Material, Transport, Equipment, Maintenance, Other)
+- `amount` - Expense amount (Decimal)
 - `description` - Optional description
 - `date` - Transaction date
 - `createdAt` - Timestamp

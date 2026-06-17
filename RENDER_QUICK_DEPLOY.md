@@ -5,7 +5,7 @@
 ### 1. Push to GitHub
 ```bash
 git add .
-git commit -m "Deploy to Render"
+git commit -m "Deploy to Render - v2.0 with Expenses & Reports"
 git push origin main
 ```
 
@@ -85,7 +85,7 @@ Render detects changes
     ↓
 Installs dependencies (npm install)
     ↓
-Backend: Generates Prisma client + starts server
+Backend: Generates Prisma client + runs migrations + starts server
     ↓
 Frontend: Builds React app + serves static files
     ↓
@@ -97,6 +97,99 @@ Services connected and ready!
 ---
 
 ## ✅ Verify Deployment
+
+1. Check backend is running
+   ```bash
+   curl https://your-backend.onrender.com/api
+   ```
+
+2. Check frontend loads
+   - Visit https://your-frontend.onrender.com
+   - Should see login page
+
+3. Login and verify all modules
+   - Dashboard
+   - Labour
+   - Sales
+   - Medicine
+   - Expenses (NEW)
+   - Reports (NEW)
+
+4. Test a full flow
+   - Create labour + salary records
+   - Add expenses
+   - View reports
+   - Check dashboard updates
+
+---
+
+## 📊 What's Deployed
+
+### Complete Application Stack
+✅ **6 Modules**: Dashboard, Labour, Sales, Medicine, Expenses, Reports
+✅ **Authentication**: JWT-based with secure tokens
+✅ **Database**: PostgreSQL with automatic migrations
+✅ **Real-time Calculations**: All metrics calculated from database
+✅ **Export Features**: PDF and Print from Reports
+✅ **Mobile Responsive**: Fully responsive on all devices
+✅ **Secure API**: All endpoints protected with authentication
+
+---
+
+## 🆕 Version 2.0 Features (Deployed)
+
+### New Modules
+- **Expenses Management** - Track business expenses by category
+- **Reports & Analytics** - Generate financial reports with exports
+
+### Enhancements
+- **Settings Dropdown** - Access user profile and logout from navbar
+- **Improved Header** - Mobile-responsive navbar with three-dot menu
+- **Enhanced Dashboard** - Includes all expense categories
+- **Advanced Filtering** - Search and filter options on all pages
+- **Export Functionality** - PDF and Print reports
+
+---
+
+## 🚨 Troubleshooting
+
+### Build Failed
+- Check `npm install` completes successfully
+- Verify `render.yaml` syntax
+- Check `.env` variables are set
+
+### Database Connection Error
+- DATABASE_URL should be auto-set by Render
+- If not, check Render PostgreSQL service is created
+- Verify migrations ran successfully
+
+### API Not Responding
+- Check backend service logs in Render dashboard
+- Verify JWT_SECRET is set
+- Ensure PORT=5000
+
+### Frontend Shows 404
+- Check frontend build completed (Publish path: `frontend/dist`)
+- Verify VITE_API_URL points to correct backend URL
+- Check browser console for errors
+
+---
+
+## 💾 Backup & Recovery
+
+- Render PostgreSQL provides automatic daily backups
+- Database backups available in Render dashboard
+- Can restore from backup if needed
+
+---
+
+## 📞 Support
+
+- Check Render documentation: https://render.com/docs
+- Review application logs in Render dashboard
+- Check environment variables are correctly set
+
+**Ready to deploy!** 🚀
 
 1. **Backend Health Check**
    ```bash

@@ -9,6 +9,8 @@ A complete Labour Management system has been integrated into your Village Khata 
 - Dashboard integration for Labour expense tracking
 - Complete validation and error handling
 
+**Version**: 2.0+ with Expenses & Reports modules
+
 ---
 
 ## 🗄️ Database Schema
@@ -40,7 +42,20 @@ A complete Labour Management system has been integrated into your Village Khata 
 - updatedAt: DateTime
 ```
 
-**Database Migration Run:** ✅ `20260616112554_add_labour_salary_models`
+#### 3. **Expense Model (NEW)** ⭐
+```
+- id: Int (Auto-increment, Primary Key)
+- expenseType: String (Diesel, Food, Material, Transport, Equipment, Maintenance, Other)
+- amount: Float (Required)
+- description: String (Optional)
+- date: DateTime (Required)
+- createdAt: DateTime
+- updatedAt: DateTime
+```
+
+**Database Migrations Applied:**
+- ✅ `20260616112554_add_labour_salary_models`
+- ✅ `1_add_expense_type` (NEW)
 
 ---
 
@@ -381,3 +396,50 @@ Labour payments automatically affect dashboard statistics:
 **Module Status:** ✅ **COMPLETE & READY FOR USE**
 
 Your Labour Management system is fully integrated and ready to track labour and payments efficiently!
+
+---
+
+## 🆕 New Modules (v2.0+)
+
+### **Expenses Management Module** ⭐
+- **Location**: `/expenses`
+- **Features**: 
+  - Create, edit, delete expenses with categories
+  - Expense types: Diesel, Food, Material, Transport, Equipment, Maintenance, Other
+  - Search and filter by type and date range
+  - Real-time statistics (Total, Today, This Month)
+  - Responsive table layout
+- **API**: `/api/expenses`, `/api/expenses/statistics`
+- **See**: `EXPENSES_REPORTS_IMPLEMENTATION.md` for details
+
+### **Reports & Analytics Module** ⭐
+- **Location**: `/reports`
+- **Features**:
+  - Financial summary cards (Sales, Labour, Medicine, Other expenses)
+  - Date filtering (Today, Week, Month, Custom)
+  - Financial breakdown by category
+  - Expense breakdown by type
+  - Export to PDF and Print functionality
+  - Trend data (Sales, Expenses, Profit)
+- **API**: `/api/reports/*` (5 endpoints)
+- **See**: `EXPENSES_REPORTS_IMPLEMENTATION.md` for details
+
+### **Dashboard Integration**
+- Dashboard automatically updates when expenses are added/edited/deleted
+- Net Profit calculation includes all expense types
+- Real-time statistics from database
+
+---
+
+## 📚 Complete Module List
+
+| Module | Status | Location | Features |
+|--------|--------|----------|----------|
+| **Dashboard** | ✅ Complete | `/dashboard` | Financial overview |
+| **Labour** | ✅ Complete | `/labour` | Labour & salary management |
+| **Sales** | ✅ Complete | `/sales` | Sales tracking |
+| **Medicine** | ✅ Complete | `/medicine` | Medicine/inventory |
+| **Expenses** | ✅ Complete | `/expenses` | Expense management (NEW) |
+| **Reports** | ✅ Complete | `/reports` | Analytics & reports (NEW) |
+
+---
