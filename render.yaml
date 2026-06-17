@@ -4,7 +4,6 @@ services:
     name: village-khata-manager-backend
     env: node
     plan: free
-    runtime: "20"
     buildCommand: cd backend && npm install && npm run prisma:generate
     startCommand: cd backend && npm start
     envVars:
@@ -26,7 +25,6 @@ services:
     name: village-khata-manager-frontend
     env: node
     plan: free
-    runtime: "20"
     buildCommand: cd frontend && npm install && npm run build
     startCommand: npx serve -s frontend/dist -l 3000
     envVars:
