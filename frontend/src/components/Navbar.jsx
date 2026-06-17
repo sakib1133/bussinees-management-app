@@ -31,8 +31,8 @@ const Navbar = ({ onMenuClick }) => {
           </div>
 
           {/* Right side - User info and logout */}
-          <div className="flex items-center gap-2 sm:gap-4 justify-end">
-            <div className="hidden sm:block text-xs md:text-sm text-gray-700 text-right">
+          <div className="flex items-center gap-2 sm:gap-4 justify-between w-full sm:w-auto">
+            <div className="text-xs sm:text-sm text-gray-700 text-left sm:text-right min-w-0">
               <p className="font-semibold truncate">{user?.name}</p>
               <p className="text-gray-500 truncate text-xs">{user?.email}</p>
             </div>
