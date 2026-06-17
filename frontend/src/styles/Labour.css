@@ -64,15 +64,6 @@ h3 { font-size: clamp(1rem, 3vw, 1.25rem); }
   }
 }
 
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-}
-
 .btn-secondary:hover {
   background-color: #545b62;
 }
