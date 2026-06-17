@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -9,7 +10,24 @@ import Medicine from './pages/Medicine';
 import Labour from './pages/Labour';
 import LabourDetails from './pages/LabourDetails';
 
+const APP_VERSION = '1.0.0'; // Update this when you make changes
+
 function App() {
+  useEffect(() => {
+    // Check for app updates
+    const storedVersion = localStorage.getItem('app_version');
+    
+    if (storedVersion && storedVersion !== APP_VERSION) {
+      console.log(`App updated from ${storedVersion} to ${APP_VERSION}. Reloading...`);
+      // Clear cache and reload
+      localStorage.setItem('app_version', APP_VERSION);
+      window.location.reload();
+    } else if (!storedVersion) {
+      // First time or cleared cache
+      localStorage.setItem('app_version', APP_VERSION);
+    }
+  }, []);
+
   return (
     <Router>
       <AuthProvider>
