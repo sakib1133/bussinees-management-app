@@ -151,6 +151,7 @@ exports.getLabourById = async (req, res) => {
 exports.updateLabour = async (req, res) => {
   try {
     const { id } = req.params;
+    const { name, address } = req.body;
     const userId = req.user.userId;
 
     if (!name || name.trim() === "") {
@@ -182,26 +183,13 @@ exports.updateLabour = async (req, res) => {
     res.json({
       success: true,
       message: "Labour updated successfully",
-      data: updatedL: "Labour updated successfully",
-      data: labour,
+      data: updatedLabour,
     });
   } catch (error) {
     if (error.code === "P2025") {
       return res.status(404).json({
         success: false,
         message: "Labour not found",
-      });
-    }
-    const userId = req.user.userId;
-
-    const labour = await prisma.labour.findUnique({
-      where: { id: parseInt(id) }
-    });
-
-    if (!labour || labour.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized: You cannot delete this labour record",
       });
     }
     res.status(500).json({
@@ -216,6 +204,18 @@ exports.updateLabour = async (req, res) => {
 exports.deleteLabour = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
+
+    const labour = await prisma.labour.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!labour || labour.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You cannot delete this labour record",
+      });
+    }
 
     await prisma.labour.delete({
       where: { id: parseInt(id) },
