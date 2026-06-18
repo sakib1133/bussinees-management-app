@@ -1,7 +1,7 @@
 services:
   # Backend Service - Free Plan
   - type: web
-    name: village-khata-manager-backend
+    name: business-management-backend
     env: node
     plan: free
     buildCommand: cd backend && npm install && npm run prisma:generate
@@ -17,24 +17,23 @@ services:
         value: 7d
       - key: DATABASE_URL
         fromDatabase:
-          name: village-khata-manager-db
+          name: business-management-db
           property: connectionString
 
   # Frontend Service - Free Plan
   - type: web
-    name: village-khata-manager-frontend
+    name: business-management-frontend
     env: node
     plan: free
     buildCommand: cd frontend && npm install && npm run build
     startCommand: npx serve -s frontend/dist -l 3000
     envVars:
       - key: VITE_API_URL
-        value: https://village-khata-manager-backend.onrender.com/api
+        value: https://business-management-backend.onrender.com/api
 
 databases:
-  - name: village-khata-manager-db
-    databaseName: village_khata_manager
-    user: khata_user
+  - name: business-management-db
+    databaseName: business_management
+    user: bms_user
     region: oregon
     plan: free
- change this

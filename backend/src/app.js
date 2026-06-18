@@ -13,7 +13,21 @@ const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
-app.use(cors());
+// CORS Configuration - Allow frontend from Render and localhost
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'https://business-management-frontend.onrender.com',
+    /\.onrender\.com$/ // Allow all Render domains
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -29,7 +43,7 @@ app.use('/api/reports', reportRoutes);
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Village Khata Manager API is running'
+    message: 'Business Management System API is running'
   });
 });
 

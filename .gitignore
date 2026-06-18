@@ -37,3 +37,7 @@ logs/
 
 # Prisma
 prisma/dev.db*
+ 
+
+
+ generate-jwt-secret.sh
