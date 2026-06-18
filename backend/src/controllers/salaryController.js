@@ -36,13 +36,6 @@ exports.createSalaryRecord = async (req, res) => {
       });
     }
 
-    if (paidAmount > salaryAmount) {
-      return res.status(400).json({
-        success: false,
-        message: "Paid amount cannot exceed salary amount",
-      });
-    }
-
     const fromDate = new Date(periodFromDate);
     const toDate = new Date(periodToDate);
 
@@ -277,17 +270,6 @@ exports.updateSalaryRecord = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Paid amount cannot be negative",
-      });
-    }
-
-    if (
-      paidAmount !== undefined &&
-      salaryAmount &&
-      paidAmount > salaryAmount
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Paid amount cannot exceed salary amount",
       });
     }
 

@@ -57,8 +57,8 @@ const LabourDetails = () => {
       return;
     }
 
-    if (parseFloat(salaryFormData.paidAmount) > parseFloat(salaryFormData.salaryAmount)) {
-      setError('Paid amount cannot exceed salary amount');
+    if (!salaryFormData.paidAmount || parseFloat(salaryFormData.paidAmount) < 0) {
+      setError('Paid amount cannot be negative');
       return;
     }
 
