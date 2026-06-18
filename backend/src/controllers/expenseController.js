@@ -5,8 +5,9 @@ const prisma = new PrismaClient();
 exports.getAllExpenses = async (req, res) => {
   try {
     const { type, startDate, endDate, search } = req.query;
+    const userId = req.user.userId;
     
-    let where = {};
+    let where = { userId };
     
     if (type) {
       where.expenseType = type;
@@ -46,6 +47,7 @@ exports.getAllExpenses = async (req, res) => {
 exports.getExpenseStatistics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+    const userId = req.user.userId;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -58,7 +60,7 @@ exports.getExpenseStatistics = async (req, res) => {
     monthStart.setHours(0, 0, 0, 0);
     
     // Total expenses
-    let totalWhere = {};
+    let totalWhere = { userId };
     if (startDate || endDate) {
       totalWhere.date = {};
       if (startDate) totalWhere.date.gte = new Date(startDate);
@@ -75,6 +77,7 @@ exports.getExpenseStatistics = async (req, res) => {
     // Today's expenses
     const todayExpenses = await prisma.expense.aggregate({
       where: {
+        userId,
         date: {
           gte: today,
           lt: tomorrowStart
@@ -88,6 +91,7 @@ exports.getExpenseStatistics = async (req, res) => {
     // Month's expenses
     const monthExpenses = await prisma.expense.aggregate({
       where: {
+        userId,
         date: {
           gte: monthStart
         }
@@ -111,6 +115,7 @@ exports.getExpenseStatistics = async (req, res) => {
 exports.createExpense = async (req, res) => {
   try {
     const { expenseType, amount, description, date } = req.body;
+    const userId = req.user.userId;
     
     if (!expenseType || !amount || !date) {
       return res.status(400).json({ error: 'expenseType, amount, and date are required' });
@@ -118,6 +123,7 @@ exports.createExpense = async (req, res) => {
     
     const expense = await prisma.expense.create({
       data: {
+        userId,
         expenseType,
         amount: parseFloat(amount),
         description,
@@ -135,6 +141,7 @@ exports.createExpense = async (req, res) => {
 exports.getExpenseById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
     
     const expense = await prisma.expense.findUnique({
       where: {
@@ -142,7 +149,7 @@ exports.getExpenseById = async (req, res) => {
       }
     });
     
-    if (!expense) {
+    if (!expense || expense.userId !== userId) {
       return res.status(404).json({ error: 'Expense not found' });
     }
     
@@ -157,8 +164,17 @@ exports.updateExpense = async (req, res) => {
   try {
     const { id } = req.params;
     const { expenseType, amount, description, date } = req.body;
+    const userId = req.user.userId;
     
-    const expense = await prisma.expense.update({
+    const expense = await prisma.expense.findUnique({
+      where: { id: parseInt(id) }
+    });
+    
+    if (!expense || expense.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized: You cannot edit this expense' });
+    }
+    
+    const updatedExpense = await prisma.expense.update({
       where: {
         id: parseInt(id)
       },
@@ -170,7 +186,7 @@ exports.updateExpense = async (req, res) => {
       }
     });
     
-    res.json(expense);
+    res.json(updatedExpense);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -180,6 +196,15 @@ exports.updateExpense = async (req, res) => {
 exports.deleteExpense = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
+    
+    const expense = await prisma.expense.findUnique({
+      where: { id: parseInt(id) }
+    });
+    
+    if (!expense || expense.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized: You cannot delete this expense' });
+    }
     
     await prisma.expense.delete({
       where: {
@@ -197,8 +222,9 @@ exports.deleteExpense = async (req, res) => {
 exports.getExpenseReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+    const userId = req.user.userId;
     
-    let where = {};
+    let where = { userId };
     if (startDate || endDate) {
       where.date = {};
       if (startDate) where.date.gte = new Date(startDate);

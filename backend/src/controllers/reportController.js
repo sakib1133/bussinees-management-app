@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 exports.getFinancialReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
+    const userId = req.user.userId;
     
     let dateFilter = {};
     if (startDate || endDate) {
@@ -15,25 +16,47 @@ exports.getFinancialReport = async (req, res) => {
     
     // Get total sales
     const salesData = await prisma.sale.aggregate({
-      where: dateFilter.date ? { saleDate: dateFilter.date } : {},
+      where: { 
+        userId,
+        ...(dateFilter.date ? { saleDate: dateFilter.date } : {})
+      },
       _sum: { amount: true }
     });
     
-    // Get labour expenses
-    const labourData = await prisma.salaryRecord.aggregate({
-      where: dateFilter.date ? { paymentDate: dateFilter.date } : {},
-      _sum: { paidAmount: true }
+    // Get labour for this user
+    const labours = await prisma.labour.findMany({
+      where: { userId },
+      select: { id: true }
     });
+    const labourIds = labours.map(l => l.id);
+
+    // Get labour expenses
+    let labourData = { _sum: { paidAmount: null } };
+    if (labourIds.length > 0) {
+      labourData = await prisma.salaryRecord.aggregate({
+        where: {
+          labourId: { in: labourIds },
+          ...(dateFilter.date ? { paymentDate: dateFilter.date } : {})
+        },
+        _sum: { paidAmount: true }
+      });
+    }
     
     // Get medicine expenses
     const medicineData = await prisma.medicine.aggregate({
-      where: dateFilter.date ? { purchaseDate: dateFilter.date } : {},
+      where: {
+        userId,
+        ...(dateFilter.date ? { purchaseDate: dateFilter.date } : {})
+      },
       _sum: { amount: true }
     });
     
     // Get other expenses
     const expensesData = await prisma.expense.aggregate({
-      where: dateFilter.date ? { date: dateFilter.date } : {},
+      where: {
+        userId,
+        ...(dateFilter.date ? { date: dateFilter.date } : {})
+      },
       _sum: { amount: true }
     });
     
@@ -61,6 +84,7 @@ exports.getFinancialReport = async (req, res) => {
 exports.getSalesTrend = async (req, res) => {
   try {
     const { days = 30 } = req.query;
+    const userId = req.user.userId;
     
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
@@ -68,6 +92,7 @@ exports.getSalesTrend = async (req, res) => {
     
     const sales = await prisma.sale.findMany({
       where: {
+        userId,
         saleDate: {
           gte: startDate
         }
@@ -102,25 +127,38 @@ exports.getSalesTrend = async (req, res) => {
 exports.getExpenseTrend = async (req, res) => {
   try {
     const { days = 30 } = req.query;
+    const userId = req.user.userId;
     
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
     startDate.setHours(0, 0, 0, 0);
     
-    // Get all three types of expenses
-    const labourPayments = await prisma.salaryRecord.findMany({
-      where: {
-        paymentDate: {
-          gte: startDate
-        }
-      },
-      orderBy: {
-        paymentDate: 'asc'
-      }
+    // Get user's labour IDs for salary records
+    const labours = await prisma.labour.findMany({
+      where: { userId },
+      select: { id: true }
     });
+    const labourIds = labours.map(l => l.id);
+
+    // Get all three types of expenses
+    let labourPayments = [];
+    if (labourIds.length > 0) {
+      labourPayments = await prisma.salaryRecord.findMany({
+        where: {
+          labourId: { in: labourIds },
+          paymentDate: {
+            gte: startDate
+          }
+        },
+        orderBy: {
+          paymentDate: 'asc'
+        }
+      });
+    }
     
     const medicines = await prisma.medicine.findMany({
       where: {
+        userId,
         purchaseDate: {
           gte: startDate
         }
@@ -132,6 +170,7 @@ exports.getExpenseTrend = async (req, res) => {
     
     const expenses = await prisma.expense.findMany({
       where: {
+        userId,
         date: {
           gte: startDate
         }

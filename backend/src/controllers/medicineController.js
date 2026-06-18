@@ -31,6 +31,7 @@ const validateMedicineInput = ({ medicineName, amount, purchaseDate, purchasedBy
 const createMedicine = async (req, res) => {
   try {
     const { medicineName, amount, purchaseDate, purchasedBy, quantity, notes } = req.body;
+    const userId = req.user.userId;
     const validationError = validateMedicineInput({ medicineName, amount, purchaseDate, purchasedBy });
 
     if (validationError) {
@@ -39,6 +40,7 @@ const createMedicine = async (req, res) => {
 
     const medicine = await prisma.medicine.create({
       data: {
+        userId,
         medicineName: String(medicineName).trim(),
         amount: Number(amount),
         purchaseDate: parseDate(purchaseDate),
@@ -58,7 +60,8 @@ const createMedicine = async (req, res) => {
 const getAllMedicines = async (req, res) => {
   try {
     const { search, startDate, endDate, sort, quickFilter } = req.query;
-    const filters = [];
+    const userId = req.user.userId;
+    const filters = [{ userId }];
 
     if (search) {
       filters.push({
@@ -74,7 +77,7 @@ const getAllMedicines = async (req, res) => {
       filters.push({ purchaseDate: { gte: dateRange.start, lte: dateRange.end } });
     }
 
-    const where = filters.length > 0 ? { AND: filters } : {};
+    const where = { AND: filters };
 
     let orderBy = { purchaseDate: 'desc' };
     switch (sort) {
@@ -117,12 +120,13 @@ const getAllMedicines = async (req, res) => {
 const getMedicineById = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
+    const userId = req.user.userId;
     if (Number.isNaN(id)) {
       return res.status(400).json({ success: false, message: 'Invalid medicine ID.' });
     }
 
     const medicine = await prisma.medicine.findUnique({ where: { id } });
-    if (!medicine) {
+    if (!medicine || medicine.userId !== userId) {
       return res.status(404).json({ success: false, message: 'Medicine record not found.' });
     }
 
@@ -136,13 +140,14 @@ const getMedicineById = async (req, res) => {
 const updateMedicine = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
+    const userId = req.user.userId;
     if (Number.isNaN(id)) {
       return res.status(400).json({ success: false, message: 'Invalid medicine ID.' });
     }
 
     const existing = await prisma.medicine.findUnique({ where: { id } });
-    if (!existing) {
-      return res.status(404).json({ success: false, message: 'Medicine record not found.' });
+    if (!existing || existing.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: You cannot edit this medicine record' });
     }
 
     const { medicineName, amount, purchaseDate, purchasedBy, quantity, notes } = req.body;
@@ -179,13 +184,14 @@ const updateMedicine = async (req, res) => {
 const deleteMedicine = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
+    const userId = req.user.userId;
     if (Number.isNaN(id)) {
       return res.status(400).json({ success: false, message: 'Invalid medicine ID.' });
     }
 
     const existing = await prisma.medicine.findUnique({ where: { id } });
-    if (!existing) {
-      return res.status(404).json({ success: false, message: 'Medicine record not found.' });
+    if (!existing || existing.userId !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: You cannot delete this medicine record' });
     }
 
     await prisma.medicine.delete({ where: { id } });
@@ -248,6 +254,7 @@ const getDateRange = ({ quickFilter, startDate, endDate }) => {
 
 const getMedicineSummary = async (req, res) => {
   try {
+    const userId = req.user.userId;
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
@@ -256,18 +263,19 @@ const getMedicineSummary = async (req, res) => {
     const thisMonthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
 
     const totalSummary = await prisma.medicine.aggregate({
+      where: { userId },
       _sum: { amount: true },
       _count: { id: true }
     });
 
     const todaySummary = await prisma.medicine.aggregate({
-      _sum: { amount: true },
-      where: { purchaseDate: { gte: todayStart, lte: todayEnd } }
+      where: { userId, purchaseDate: { gte: todayStart, lte: todayEnd } },
+      _sum: { amount: true }
     });
 
     const thisMonthSummary = await prisma.medicine.aggregate({
-      _sum: { amount: true },
-      where: { purchaseDate: { gte: thisMonthStart, lte: todayEnd } }
+      where: { userId, purchaseDate: { gte: thisMonthStart, lte: todayEnd } },
+      _sum: { amount: true }
     });
 
     return res.status(200).json({

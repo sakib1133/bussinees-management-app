@@ -8,12 +8,17 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int              @id @default(autoincrement())
+  name           String
+  email          String           @unique
+  password       String
+  sales          Sale[]
+  expenses       Expense[]
+  medicines      Medicine[]
+  labours        Labour[]
+  labourPayments LabourPayment[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 }
 
 model Sale {
@@ -22,22 +27,31 @@ model Sale {
   amount         Float
   saleDate       DateTime
   description    String?
-  createdBy      Int
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model LabourPayment {
   id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount      Float
   description String?
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Medicine {
   id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   medicineName String
   amount       Float
   purchaseDate DateTime
@@ -46,25 +60,36 @@ model Medicine {
   notes        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Expense {
   id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenseType   String   // Diesel, Food, Material, Transport, Equipment, Maintenance, Other
   amount        Float
   description   String?
   date          DateTime
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Labour {
   id           Int            @id @default(autoincrement())
-  name         String         @unique
+  userId       Int
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
   address      String?
   salaryRecords SalaryRecord[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model SalaryRecord {

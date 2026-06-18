@@ -4,8 +4,11 @@ const prisma = new PrismaClient();
 
 const getSummary = async (req, res) => {
   try {
+    const userId = req.user.userId;
+
     // Calculate total sales from database
     const totalSalesResult = await prisma.sale.aggregate({
+      where: { userId },
       _sum: {
         amount: true
       }
@@ -13,25 +16,38 @@ const getSummary = async (req, res) => {
 
     // Calculate labour expense from legacy LabourPayment table
     const totalLabourPaymentResult = await prisma.labourPayment.aggregate({
+      where: { userId },
       _sum: {
         amount: true
       }
     });
 
     // Calculate labour expense from new SalaryRecord table
-    const totalSalaryPaidResult = await prisma.salaryRecord.aggregate({
-      _sum: {
-        paidAmount: true
-      }
+    const labours = await prisma.labour.findMany({
+      where: { userId },
+      select: { id: true }
     });
+    const labourIds = labours.map(l => l.id);
+
+    let totalSalaryPaidResult = { _sum: { paidAmount: null } };
+    if (labourIds.length > 0) {
+      totalSalaryPaidResult = await prisma.salaryRecord.aggregate({
+        where: { labourId: { in: labourIds } },
+        _sum: {
+          paidAmount: true
+        }
+      });
+    }
 
     const totalMedicineExpenseResult = await prisma.medicine.aggregate({
+      where: { userId },
       _sum: {
         amount: true
       }
     });
 
     const totalOtherExpensesResult = await prisma.expense.aggregate({
+      where: { userId },
       _sum: {
         amount: true
       }

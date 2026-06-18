@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 exports.createLabour = async (req, res) => {
   try {
     const { name, address } = req.body;
+    const userId = req.user.userId;
 
     // Validation
     if (!name || name.trim() === "") {
@@ -14,9 +15,9 @@ exports.createLabour = async (req, res) => {
       });
     }
 
-    // Check if labour already exists
+    // Check if labour already exists for this user
     const existingLabour = await prisma.labour.findUnique({
-      where: { name: name.trim() },
+      where: { userId_name: { userId, name: name.trim() } },
     });
 
     if (existingLabour) {
@@ -28,6 +29,7 @@ exports.createLabour = async (req, res) => {
 
     const labour = await prisma.labour.create({
       data: {
+        userId,
         name: name.trim(),
         address: address?.trim() || null,
       },
@@ -50,7 +52,9 @@ exports.createLabour = async (req, res) => {
 // Get all labour with salary calculations
 exports.getAllLabour = async (req, res) => {
   try {
+    const userId = req.user.userId;
     const labours = await prisma.labour.findMany({
+      where: { userId },
       include: {
         salaryRecords: true,
       },
@@ -95,6 +99,7 @@ exports.getAllLabour = async (req, res) => {
 exports.getLabourById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
 
     const labour = await prisma.labour.findUnique({
       where: { id: parseInt(id) },
@@ -107,7 +112,7 @@ exports.getLabourById = async (req, res) => {
       },
     });
 
-    if (!labour) {
+    if (!labour || labour.userId !== userId) {
       return res.status(404).json({
         success: false,
         message: "Labour not found",
@@ -146,7 +151,7 @@ exports.getLabourById = async (req, res) => {
 exports.updateLabour = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, address } = req.body;
+    const userId = req.user.userId;
 
     if (!name || name.trim() === "") {
       return res.status(400).json({
@@ -155,7 +160,18 @@ exports.updateLabour = async (req, res) => {
       });
     }
 
-    const labour = await prisma.labour.update({
+    const labour = await prisma.labour.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!labour || labour.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You cannot edit this labour record",
+      });
+    }
+
+    const updatedLabour = await prisma.labour.update({
       where: { id: parseInt(id) },
       data: {
         name: name.trim(),
@@ -166,6 +182,7 @@ exports.updateLabour = async (req, res) => {
     res.json({
       success: true,
       message: "Labour updated successfully",
+      data: updatedL: "Labour updated successfully",
       data: labour,
     });
   } catch (error) {
@@ -173,6 +190,18 @@ exports.updateLabour = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Labour not found",
+      });
+    }
+    const userId = req.user.userId;
+
+    const labour = await prisma.labour.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!labour || labour.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You cannot delete this labour record",
       });
     }
     res.status(500).json({

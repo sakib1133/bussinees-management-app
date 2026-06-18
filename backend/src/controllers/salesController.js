@@ -25,11 +25,11 @@ const createSale = async (req, res) => {
 
     const sale = await prisma.sale.create({
       data: {
+        userId,
         contractorName,
         amount: parseFloat(amount),
         saleDate: new Date(saleDate),
-        description: description || null,
-        createdBy: userId
+        description: description || null
       }
     });
 
@@ -50,7 +50,9 @@ const createSale = async (req, res) => {
 // Get all sales
 const getAllSales = async (req, res) => {
   try {
+    const userId = req.user.userId;
     const sales = await prisma.sale.findMany({
+      where: { userId },
       orderBy: { saleDate: 'desc' },
       select: {
         id: true,
@@ -59,8 +61,7 @@ const getAllSales = async (req, res) => {
         saleDate: true,
         description: true,
         createdAt: true,
-        updatedAt: true,
-        createdBy: true
+        updatedAt: true
       }
     });
 
@@ -81,12 +82,13 @@ const getAllSales = async (req, res) => {
 const getSaleById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
 
     const sale = await prisma.sale.findUnique({
       where: { id: parseInt(id) }
     });
 
-    if (!sale) {
+    if (!sale || sale.userId !== userId) {
       return res.status(404).json({
         success: false,
         message: 'Sale not found.'
@@ -111,15 +113,16 @@ const updateSale = async (req, res) => {
   try {
     const { id } = req.params;
     const { contractorName, amount, saleDate, description } = req.body;
+    const userId = req.user.userId;
 
     const sale = await prisma.sale.findUnique({
       where: { id: parseInt(id) }
     });
 
-    if (!sale) {
-      return res.status(404).json({
+    if (!sale || sale.userId !== userId) {
+      return res.status(403).json({
         success: false,
-        message: 'Sale not found.'
+        message: 'Unauthorized: You cannot edit this sale.'
       });
     }
 
@@ -158,15 +161,16 @@ const updateSale = async (req, res) => {
 // Delete sale
 const deleteSale = async (req, res) => {
   try {
-    const { id } = req.params;
+    const userId = req.user.userId;
 
     const sale = await prisma.sale.findUnique({
       where: { id: parseInt(id) }
     });
 
-    if (!sale) {
-      return res.status(404).json({
+    if (!sale || sale.userId !== userId) {
+      return res.status(403).json({
         success: false,
+        message: 'Unauthorized: You cannot delete this sale
         message: 'Sale not found.'
       });
     }

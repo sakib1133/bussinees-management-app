@@ -95,6 +95,19 @@ exports.createSalaryRecord = async (req, res) => {
 exports.getSalaryRecordsByLabour = async (req, res) => {
   try {
     const { labourId } = req.params;
+    const userId = req.user.userId;
+
+    // Verify labour belongs to user
+    const labour = await prisma.labour.findUnique({
+      where: { id: parseInt(labourId) }
+    });
+
+    if (!labour || labour.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: Labour not found",
+      });
+    }
 
     const salaryRecords = await prisma.salaryRecord.findMany({
       where: { labourId: parseInt(labourId) },
@@ -123,11 +136,40 @@ exports.getSalaryRecordsByLabour = async (req, res) => {
 exports.getAllSalaryRecords = async (req, res) => {
   try {
     const { labourId, fromDate, toDate } = req.query;
+    const userId = req.user.userId;
 
     let whereClause = {};
 
     if (labourId) {
+      // Verify labour belongs to user
+      const labour = await prisma.labour.findUnique({
+        where: { id: parseInt(labourId) }
+      });
+
+      if (!labour || labour.userId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized: Labour not found",
+        });
+      }
+
       whereClause.labourId = parseInt(labourId);
+    } else {
+      // Get all labours for this user, then get their salary records
+      const labours = await prisma.labour.findMany({
+        where: { userId },
+        select: { id: true }
+      });
+      const labourIds = labours.map(l => l.id);
+      if (labourIds.length > 0) {
+        whereClause.labourId = { in: labourIds };
+      } else {
+        // No labours for this user
+        return res.json({
+          success: true,
+          data: [],
+        });
+      }
     }
 
     if (fromDate || toDate) {
@@ -167,6 +209,7 @@ exports.getAllSalaryRecords = async (req, res) => {
 exports.getSalaryRecordById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
 
     const salaryRecord = await prisma.salaryRecord.findUnique({
       where: { id: parseInt(id) },
@@ -175,7 +218,7 @@ exports.getSalaryRecordById = async (req, res) => {
       },
     });
 
-    if (!salaryRecord) {
+    if (!salaryRecord || salaryRecord.labour.userId !== userId) {
       return res.status(404).json({
         success: false,
         message: "Salary record not found",
@@ -199,6 +242,7 @@ exports.getSalaryRecordById = async (req, res) => {
 exports.updateSalaryRecord = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
     const {
       salaryAmount,
       periodFromDate,
@@ -207,6 +251,19 @@ exports.updateSalaryRecord = async (req, res) => {
       paidAmount,
       notes,
     } = req.body;
+
+    // Get salary record with labour to verify ownership
+    const salaryRecord = await prisma.salaryRecord.findUnique({
+      where: { id: parseInt(id) },
+      include: { labour: true }
+    });
+
+    if (!salaryRecord || salaryRecord.labour.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You cannot edit this salary record",
+      });
+    }
 
     // Validation
     if (salaryAmount && salaryAmount <= 0) {
@@ -242,7 +299,7 @@ exports.updateSalaryRecord = async (req, res) => {
     if (paidAmount !== undefined) updateData.paidAmount = parseFloat(paidAmount);
     if (notes !== undefined) updateData.notes = notes?.trim() || null;
 
-    const salaryRecord = await prisma.salaryRecord.update({
+    const updatedRecord = await prisma.salaryRecord.update({
       where: { id: parseInt(id) },
       data: updateData,
       include: {
@@ -253,7 +310,7 @@ exports.updateSalaryRecord = async (req, res) => {
     res.json({
       success: true,
       message: "Salary record updated successfully",
-      data: salaryRecord,
+      data: updatedRecord,
     });
   } catch (error) {
     if (error.code === "P2025") {
@@ -274,6 +331,20 @@ exports.updateSalaryRecord = async (req, res) => {
 exports.deleteSalaryRecord = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.userId;
+
+    // Get salary record with labour to verify ownership
+    const salaryRecord = await prisma.salaryRecord.findUnique({
+      where: { id: parseInt(id) },
+      include: { labour: true }
+    });
+
+    if (!salaryRecord || salaryRecord.labour.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You cannot delete this salary record",
+      });
+    }
 
     await prisma.salaryRecord.delete({
       where: { id: parseInt(id) },
