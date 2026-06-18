@@ -19,13 +19,15 @@ code {
 /* PWA Specific Styles */
 
 /* Prevent iOS rubber band effect */
-html, body {
-  position: fixed;
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
-}
+/* PWA Specific Styles */
 
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
 /* Animations */
 @keyframes slideIn {
   from {
