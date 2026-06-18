@@ -161,6 +161,7 @@ const updateSale = async (req, res) => {
 // Delete sale
 const deleteSale = async (req, res) => {
   try {
+    const { id } = req.params;
     const userId = req.user.userId;
 
     const sale = await prisma.sale.findUnique({
@@ -170,8 +171,7 @@ const deleteSale = async (req, res) => {
     if (!sale || sale.userId !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: You cannot delete this sale
-        message: 'Sale not found.'
+        message: 'Unauthorized: You cannot delete this sale.'
       });
     }
 
