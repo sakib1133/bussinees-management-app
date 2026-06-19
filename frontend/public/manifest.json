@@ -3,6 +3,8 @@
   "short_name": "BMS",
   "start_url": "/",
   "display": "standalone",
+  "scope": "/",
+  "orientation": "portrait-primary",
   "theme_color": "#2d3748",
   "background_color": "#ffffff",
   "icons": [

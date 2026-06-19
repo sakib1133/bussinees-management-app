@@ -20,11 +20,13 @@ const corsOptions = {
     'http://localhost:5173',
     'http://127.0.0.1:3000',
     'https://business-management-frontend.onrender.com',
-    /\.onrender\.com$/ // Allow all Render domains
+    /\.onrender\.com$/, // Allow all Render domains
+    /^https:\/\/[a-z0-9]+\.[a-z0-9]+\/.*$/ // Allow all HTTPS origins (iOS PWA fix)
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));

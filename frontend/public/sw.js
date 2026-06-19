@@ -91,15 +91,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets - Cache first
+  // JavaScript/CSS files - Network first (iOS PWA fix: don't cache JS with cache-first)
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(networkFirstStrategy(request));
+    return;
+  }
+
+  // Other static assets - Cache first
   if (isStaticAsset(url)) {
     event.respondWith(cacheFirstStrategy(request));
     return;
   }
 
-  // Navigation requests - Cache first with network fallback
+  // Navigation requests - Network first for iOS PWA compatibility
   if (request.mode === 'navigate') {
-    event.respondWith(navigationStrategy(request));
+    event.respondWith(networkFirstStrategy(request));
     return;
   }
 
@@ -111,7 +117,11 @@ self.addEventListener('fetch', (event) => {
 async function authNetworkOnlyStrategy(request) {
   try {
     // Always go to network for auth endpoints - NO cache
-    const networkResponse = await fetch(request);
+    const fetchOptions = {
+      credentials: 'include',
+      headers: new Headers(request.headers)
+    };
+    const networkResponse = await fetch(request, fetchOptions);
     return networkResponse;
   } catch (error) {
     console.log('[Service Worker] Auth endpoint network request failed (CRITICAL):', request.url);
@@ -135,8 +145,12 @@ async function authNetworkOnlyStrategy(request) {
 // Network First Strategy - For API calls
 async function networkFirstStrategy(request) {
   try {
-    // Try network first
-    const networkResponse = await fetch(request);
+    // Try network first with credentials for iOS PWA
+    const fetchOptions = {
+      credentials: 'include',
+      headers: new Headers(request.headers)
+    };
+    const networkResponse = await fetch(request, fetchOptions);
     
     // Cache ONLY successful responses (2xx), never cache errors (4xx, 5xx)
     if (networkResponse.ok && networkResponse.status >= 200 && networkResponse.status < 400) {
