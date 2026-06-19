@@ -1,5 +1,8 @@
+/* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind base;
+/* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind components;
+/* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind utilities;
 
 body {
@@ -16,9 +19,6 @@ code {
     monospace;
 }
 
-/* PWA Specific Styles */
-
-/* Prevent iOS rubber band effect */
 /* PWA Specific Styles */
 
 html,
@@ -110,7 +110,9 @@ body {
   }
 
   /* Prevent blue highlight on tap */
-  -webkit-tap-highlight-color: transparent;
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 /* Safe area for notch devices */
