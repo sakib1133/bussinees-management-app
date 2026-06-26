@@ -26,7 +26,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.email || !formData.password) {
       setError('Please fill in all fields');
       return;
@@ -44,11 +44,15 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-6 sm:p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-800 via-slate-900 to-gray-900 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 sm:p-8 w-full max-w-md">
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Welcome Back</h1>
-          <p className="text-sm sm:text-base text-gray-600">Village Khata Manager</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Village Khata Manager
+          </p>
         </div>
 
         {error && (
@@ -67,7 +71,7 @@ const Login = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
+              className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all text-sm sm:text-base"
               placeholder="your@email.com"
               disabled={loading}
             />
@@ -83,7 +87,7 @@ const Login = () => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
+                className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all text-sm sm:text-base"
                 placeholder="••••••••"
                 disabled={loading}
               />
@@ -100,7 +104,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-6 px-4 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 disabled:opacity-50 font-semibold text-sm sm:text-base"
+            className="w-full mt-6 px-4 py-2 sm:py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition duration-200 disabled:opacity-50 font-semibold text-sm sm:text-base shadow-md"
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
@@ -110,7 +114,7 @@ const Login = () => {
           <button
             type="button"
             onClick={() => setShowForgotPassword(true)}
-            className="text-sm sm:text-base text-blue-600 hover:text-blue-800 font-semibold"
+            className="text-sm sm:text-base text-indigo-600 hover:text-indigo-800 font-semibold transition-colors"
           >
             Forgot Password?
           </button>
@@ -118,7 +122,10 @@ const Login = () => {
 
         <div className="mt-6 text-center text-sm sm:text-base text-gray-600">
           Don't have an account?{' '}
-          <Link to="/register" className="text-blue-600 hover:text-blue-800 font-semibold">
+          <Link
+            to="/register"
+            className="text-indigo-600 hover:text-indigo-800 font-semibold transition-colors"
+          >
             Register here
           </Link>
         </div>
