@@ -13,16 +13,29 @@ const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
-// CORS Configuration - Allow frontend from Render and localhost
+// CORS Configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'https://bussinees-management-app-7b5y.vercel.app',
+  'https://business-management-frontend.onrender.com'
+];
+
 const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'https://business-management-frontend.onrender.com',
-    /\.onrender\.com$/, // Allow all Render domains
-    /^https:\/\/[a-z0-9]+\.[a-z0-9]+\/.*$/ // Allow all HTTPS origins (iOS PWA fix)
-  ],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.onrender.com') ||
+      origin.endsWith('.vercel.app')
+    ) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
