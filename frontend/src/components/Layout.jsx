@@ -17,13 +17,13 @@ const Layout = ({ children }) => {
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-[calc(var(--vh,1vh)*100)] bg-gray-50 flex flex-col">
       <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
       
       <div className="flex flex-1 overflow-hidden">
         {/* Mobile Sidebar - Fixed positioning with smooth transition */}
         <div 
-          className={`fixed md:static left-0 top-16 z-40 h-[calc(100vh-64px)] w-64 bg-gray-900 transition-transform duration-300 ease-in-out transform ${
+          className={`fixed md:static left-0 top-16 bottom-0 z-40 w-64 bg-gray-900 transition-transform duration-300 ease-in-out transform ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
         >

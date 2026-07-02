@@ -13,7 +13,7 @@ const Sidebar = ({ onClose }) => {
   ];
 
   return (
-    <div className="w-64 bg-gray-900 text-white min-h-screen p-3 sm:p-4 overflow-y-auto">
+    <div className="w-64 h-full bg-gray-900 text-white p-3 sm:p-4 overflow-y-auto">
       <div className="mb-6 sm:mb-8 flex justify-between items-center">
         <h2 className="text-base sm:text-lg font-bold text-blue-400">Navigation</h2>
         <button

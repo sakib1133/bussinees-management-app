@@ -21,18 +21,29 @@ const APP_VERSION = '1.0.2'; // Update this when you make changes
 
 function App() {
   useEffect(() => {
+    const setViewportHeight = () => {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    };
+
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+
     // Check for app updates
     const storedVersion = localStorage.getItem('app_version');
     
     if (storedVersion && storedVersion !== APP_VERSION) {
       console.log(`App updated from ${storedVersion} to ${APP_VERSION}. Reloading...`);
-      // Clear cache and reload
       localStorage.setItem('app_version', APP_VERSION);
       window.location.reload();
     } else if (!storedVersion) {
-      // First time or cleared cache
       localStorage.setItem('app_version', APP_VERSION);
     }
+
+    return () => {
+      window.removeEventListener('resize', setViewportHeight);
+      window.removeEventListener('orientationchange', setViewportHeight);
+    };
   }, []);
 
   return (
