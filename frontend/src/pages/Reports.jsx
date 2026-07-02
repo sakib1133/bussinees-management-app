@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import Layout from '../components/Layout';
 import html2pdf from 'html2pdf.js';
+import * as XLSX from 'xlsx';
 
 const Reports = () => {
   const [financialData, setFinancialData] = useState({
@@ -141,15 +142,73 @@ const Reports = () => {
   return (
     <Layout>
       <div className="p-3 sm:p-6 max-w-7xl mx-auto" id="report-content">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Financial Reports</h1>
+        <div className="mb-6 grid gap-6 xl:grid-cols-[1.8fr_0.95fr]">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">Financial Reports</h1>
+            <p className="text-gray-600 max-w-2xl">
+              Review your business performance with clear metrics, trend summaries, and export-ready reports.
+              Use the filters below to narrow the view and keep every report up to date.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-[0.24em] text-gray-500 mb-3">Report snapshot</p>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-blue-50 text-blue-800 px-3 py-1 text-sm font-semibold">
+                  {dateFilter === 'today'
+                    ? 'Today'
+                    : dateFilter === 'week'
+                    ? 'This Week'
+                    : dateFilter === 'month'
+                    ? 'This Month'
+                    : 'Custom Range'}
+                </span>
+                <span className={`rounded-full px-3 py-1 text-sm font-semibold ${financialData.netProfit >= 0 ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                  Net Profit {financialData.netProfit >= 0 ? 'Positive' : 'Negative'}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-[0.24em] text-gray-500 mb-3">Quick actions</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  onClick={downloadPDF}
+                  className="w-full px-4 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition"
+                >
+                  📥 Download PDF
+                </button>
+                <button
+                  onClick={downloadExcel}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition"
+                >
+                  📄 Download XLSX
+                </button>
+                <button
+                  onClick={printReport}
+                  className="w-full px-4 py-3 bg-gray-600 text-white rounded-2xl hover:bg-gray-700 transition"
+                >
+                  🖨️ Print Report
+                </button>
+                <button
+                  onClick={fetchReportData}
+                  className="w-full px-4 py-3 bg-green-600 text-white rounded-2xl hover:bg-green-700 transition"
+                >
+                  🔄 Refresh Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Date Filter Controls */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-6 shadow-sm">
+        <div className="bg-white border border-gray-200 rounded-3xl p-5 mb-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Period</h3>
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => handleFilterChange('today')}
-              className={`px-4 py-2 rounded-lg transition ${
+              className={`px-4 py-2 rounded-full transition ${
                 dateFilter === 'today'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
@@ -159,7 +218,7 @@ const Reports = () => {
             </button>
             <button
               onClick={() => handleFilterChange('week')}
-              className={`px-4 py-2 rounded-lg transition ${
+              className={`px-4 py-2 rounded-full transition ${
                 dateFilter === 'week'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
@@ -169,7 +228,7 @@ const Reports = () => {
             </button>
             <button
               onClick={() => handleFilterChange('month')}
-              className={`px-4 py-2 rounded-lg transition ${
+              className={`px-4 py-2 rounded-full transition ${
                 dateFilter === 'month'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
@@ -179,7 +238,7 @@ const Reports = () => {
             </button>
             <button
               onClick={() => handleFilterChange('custom')}
-              className={`px-4 py-2 rounded-lg transition ${
+              className={`px-4 py-2 rounded-full transition ${
                 dateFilter === 'custom'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
@@ -214,30 +273,48 @@ const Reports = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-gray-600 text-sm">Total Sales</p>
-            <p className="text-2xl sm:text-3xl font-bold text-blue-600">₹{financialData.totalSales.toLocaleString()}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+          <div className="rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-blue-700">Total Sales</span>
+              <span className="text-xl">💰</span>
+            </div>
+            <p className="text-3xl font-bold text-blue-600">₹{financialData.totalSales.toLocaleString()}</p>
           </div>
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <p className="text-gray-600 text-sm">Labour Expense</p>
-            <p className="text-2xl sm:text-3xl font-bold text-orange-600">₹{financialData.labourExpense.toLocaleString()}</p>
+          <div className="rounded-3xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-orange-700">Labour Expense</span>
+              <span className="text-xl">👷</span>
+            </div>
+            <p className="text-3xl font-bold text-orange-600">₹{financialData.labourExpense.toLocaleString()}</p>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-gray-600 text-sm">Medicine Expense</p>
-            <p className="text-2xl sm:text-3xl font-bold text-red-600">₹{financialData.medicineExpense.toLocaleString()}</p>
+          <div className="rounded-3xl border border-red-200 bg-red-50 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-red-700">Medicine Expense</span>
+              <span className="text-xl">💊</span>
+            </div>
+            <p className="text-3xl font-bold text-red-600">₹{financialData.medicineExpense.toLocaleString()}</p>
           </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-gray-600 text-sm">Other Expenses</p>
-            <p className="text-2xl sm:text-3xl font-bold text-yellow-600">₹{financialData.otherExpenses.toLocaleString()}</p>
+          <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-yellow-700">Other Expenses</span>
+              <span className="text-xl">📍</span>
+            </div>
+            <p className="text-3xl font-bold text-yellow-600">₹{financialData.otherExpenses.toLocaleString()}</p>
           </div>
-          <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
-            <p className="text-gray-600 text-sm">Total Expenses</p>
-            <p className="text-2xl sm:text-3xl font-bold text-pink-600">₹{financialData.totalExpenses.toLocaleString()}</p>
+          <div className="rounded-3xl border border-pink-200 bg-pink-50 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-pink-700">Total Expenses</span>
+              <span className="text-xl">📊</span>
+            </div>
+            <p className="text-3xl font-bold text-pink-600">₹{financialData.totalExpenses.toLocaleString()}</p>
           </div>
-          <div className={`${financialData.netProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border rounded-lg p-4`}>
-            <p className="text-gray-600 text-sm">Net Profit</p>
-            <p className={`text-2xl sm:text-3xl font-bold ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`${financialData.netProfit >= 0 ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700'} rounded-3xl border p-5 shadow-sm`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold">Net Profit</span>
+              <span className="text-xl">✨</span>
+            </div>
+            <p className={`text-3xl font-bold ${financialData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               ₹{financialData.netProfit.toLocaleString()}
             </p>
           </div>
@@ -252,10 +329,22 @@ const Reports = () => {
             📥 Download PDF
           </button>
           <button
+            onClick={downloadExcel}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            📄 Download XLSX
+          </button>
+          <button
             onClick={printReport}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
           >
             🖨️ Print Report
+          </button>
+          <button
+            onClick={fetchReportData}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
+            🔄 Refresh Data
           </button>
         </div>
 

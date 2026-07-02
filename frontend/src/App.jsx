@@ -17,7 +17,7 @@ import LabourDetails from './pages/LabourDetails';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 
-const APP_VERSION = '1.0.2'; // Update this when you make changes
+const APP_VERSION = '1.0.3'; // Update this when you make changes
 
 function App() {
   const [versionUpdateAvailable, setVersionUpdateAvailable] = useState(false);
