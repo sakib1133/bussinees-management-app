@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -20,14 +20,34 @@ import Reports from './pages/Reports';
 const APP_VERSION = '1.0.2'; // Update this when you make changes
 
 function App() {
+  const [versionUpdateAvailable, setVersionUpdateAvailable] = useState(false);
+
   useEffect(() => {
     const setViewportHeight = () => {
       document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     };
 
+    const checkDeployedVersion = async () => {
+      try {
+        const response = await fetch('version.json', { cache: 'no-store' });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const latestVersion = String(data.version || '');
+
+        if (latestVersion && latestVersion !== APP_VERSION) {
+          console.log(`[PWA] New deployed version available: ${latestVersion}`);
+          setVersionUpdateAvailable(true);
+        }
+      } catch (error) {
+        console.warn('[PWA] Version check failed:', error);
+      }
+    };
+
     setViewportHeight();
     window.addEventListener('resize', setViewportHeight);
     window.addEventListener('orientationchange', setViewportHeight);
+    checkDeployedVersion();
 
     // Check for app updates
     const storedVersion = localStorage.getItem('app_version');
@@ -52,7 +72,7 @@ function App() {
       <Router>
         <AuthProvider>
           <OfflineBanner />
-          <UpdateNotification />
+          <UpdateNotification versionUpdateAvailable={versionUpdateAvailable} />
           <InstallAppButton />
           
           <Routes>

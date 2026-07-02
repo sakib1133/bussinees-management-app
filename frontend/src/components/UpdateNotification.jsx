@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
 import { skipWaitingAndReload } from '../utils/pwaUtils';
 
-export default function UpdateNotification() {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
+export default function UpdateNotification({ versionUpdateAvailable = false }) {
+  const [updateAvailable, setUpdateAvailable] = useState(versionUpdateAvailable);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (versionUpdateAvailable) {
+      setUpdateAvailable(true);
+    }
+  }, [versionUpdateAvailable]);
 
   useEffect(() => {
     // Listen for PWA update notification

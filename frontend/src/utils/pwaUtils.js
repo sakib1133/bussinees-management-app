@@ -102,25 +102,36 @@ function startUpdateChecks() {
  * Skip waiting and activate the new service worker
  */
 export async function skipWaitingAndReload() {
-  if (!swRegistration || !swRegistration.waiting) {
-    console.warn('[PWA] No waiting service worker found');
+  if (!swRegistration) {
+    console.warn('[PWA] No service worker registration available');
+    window.location.reload();
     return;
   }
 
-  console.log('[PWA] Activating new Service Worker...');
-
-  // Tell the waiting worker to skipWaiting
-  swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
-
-  // Reload the page when the new service worker takes over
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      console.log('[PWA] Reloading page with new Service Worker');
-      window.location.reload();
+  if (!swRegistration.waiting) {
+    try {
+      await swRegistration.update();
+    } catch (error) {
+      console.error('[PWA] Service Worker update failed:', error);
     }
-  });
+  }
+
+  if (swRegistration.waiting) {
+    console.log('[PWA] Activating new Service Worker...');
+    swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        console.log('[PWA] Reloading page with new Service Worker');
+        window.location.reload();
+      }
+    });
+    return;
+  }
+
+  window.location.reload();
 }
 
 /**
@@ -164,6 +175,18 @@ export async function unregisterServiceWorker() {
     } catch (error) {
       console.error('[PWA] Failed to unregister Service Worker:', error);
     }
+  }
+}
+
+export async function checkForUpdates() {
+  if (!swRegistration) {
+    return;
+  }
+
+  try {
+    await swRegistration.update();
+  } catch (error) {
+    console.error('[PWA] Service Worker update check failed:', error);
   }
 }
 
