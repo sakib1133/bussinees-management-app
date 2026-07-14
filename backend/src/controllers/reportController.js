@@ -1,28 +1,73 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Helper: parse and validate the "days" query param
+const parseDays = (days) => {
+  const parsed = Number(days);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) {
+    return null;
+  }
+  return parsed;
+};
+
+// Helper: build a stable local YYYY-MM-DD key from a Date
+// (uses local time, not UTC, so dates near midnight don't shift
+// across day boundaries for users in positive UTC offsets like IST)
+const toDateKey = (date) => {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 // Get complete financial report
 exports.getFinancialReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const userId = req.user.userId;
-    
-    let dateFilter = {};
-    if (startDate || endDate) {
-      dateFilter.date = {};
-      if (startDate) dateFilter.date.gte = new Date(startDate);
-      if (endDate) dateFilter.date.lte = new Date(endDate);
+
+    const parsedStartDate = startDate ? new Date(startDate) : null;
+    const parsedEndDate = endDate ? new Date(endDate) : null;
+
+    if (
+      (parsedStartDate && isNaN(parsedStartDate.getTime())) ||
+      (parsedEndDate && isNaN(parsedEndDate.getTime()))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format',
+      });
     }
-    
+
+    // Extend endDate to the end of that calendar day so same-day
+    // records aren't excluded by a midnight truncation, and so the
+    // comparison below doesn't wrongly reject a startDate that falls
+    // later the same day (e.g. startDate=...T12:00, endDate same day)
+    if (parsedEndDate) {
+      parsedEndDate.setHours(23, 59, 59, 999);
+    }
+
+    if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'startDate must be before endDate',
+      });
+    }
+
+    let dateFilter = {};
+    if (parsedStartDate || parsedEndDate) {
+      dateFilter.date = {};
+      if (parsedStartDate) dateFilter.date.gte = parsedStartDate;
+      if (parsedEndDate) dateFilter.date.lte = parsedEndDate;
+    }
+
     // Get total sales
     const salesData = await prisma.sale.aggregate({
-      where: { 
+      where: {
         userId,
         ...(dateFilter.date ? { saleDate: dateFilter.date } : {})
       },
       _sum: { amount: true }
     });
-    
+
     // Get labour for this user
     const labours = await prisma.labour.findMany({
       where: { userId },
@@ -41,7 +86,7 @@ exports.getFinancialReport = async (req, res) => {
         _sum: { paidAmount: true }
       });
     }
-    
+
     // Get medicine expenses
     const medicineData = await prisma.medicine.aggregate({
       where: {
@@ -50,7 +95,7 @@ exports.getFinancialReport = async (req, res) => {
       },
       _sum: { amount: true }
     });
-    
+
     // Get other expenses
     const expensesData = await prisma.expense.aggregate({
       where: {
@@ -59,14 +104,14 @@ exports.getFinancialReport = async (req, res) => {
       },
       _sum: { amount: true }
     });
-    
-    const totalSales = salesData._sum.amount || 0;
-    const labourExpense = labourData._sum.paidAmount || 0;
-    const medicineExpense = medicineData._sum.amount || 0;
-    const otherExpenses = expensesData._sum.amount || 0;
+
+    const totalSales = Number(salesData._sum.amount) || 0;
+    const labourExpense = Number(labourData._sum.paidAmount) || 0;
+    const medicineExpense = Number(medicineData._sum.amount) || 0;
+    const otherExpenses = Number(expensesData._sum.amount) || 0;
     const totalExpenses = labourExpense + medicineExpense + otherExpenses;
     const netProfit = totalSales - totalExpenses;
-    
+
     res.json({
       totalSales,
       labourExpense,
@@ -76,7 +121,11 @@ exports.getFinancialReport = async (req, res) => {
       netProfit
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Error generating financial report',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message }),
+    });
   }
 };
 
@@ -85,11 +134,19 @@ exports.getSalesTrend = async (req, res) => {
   try {
     const { days = 30 } = req.query;
     const userId = req.user.userId;
-    
+
+    const parsedDays = parseDays(days);
+    if (parsedDays === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid days value',
+      });
+    }
+
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days));
+    startDate.setDate(startDate.getDate() - parsedDays);
     startDate.setHours(0, 0, 0, 0);
-    
+
     const sales = await prisma.sale.findMany({
       where: {
         userId,
@@ -101,25 +158,29 @@ exports.getSalesTrend = async (req, res) => {
         saleDate: 'asc'
       }
     });
-    
+
     // Group by date
     const grouped = {};
     sales.forEach(sale => {
-      const dateKey = new Date(sale.saleDate).toISOString().split('T')[0];
+      const dateKey = toDateKey(sale.saleDate);
       if (!grouped[dateKey]) {
         grouped[dateKey] = 0;
       }
-      grouped[dateKey] += sale.amount;
+      grouped[dateKey] += Number(sale.amount);
     });
-    
+
     const data = Object.entries(grouped).map(([date, amount]) => ({
       date,
       amount
     }));
-    
+
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching sales trend',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message }),
+    });
   }
 };
 
@@ -128,11 +189,19 @@ exports.getExpenseTrend = async (req, res) => {
   try {
     const { days = 30 } = req.query;
     const userId = req.user.userId;
-    
+
+    const parsedDays = parseDays(days);
+    if (parsedDays === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid days value',
+      });
+    }
+
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days));
+    startDate.setDate(startDate.getDate() - parsedDays);
     startDate.setHours(0, 0, 0, 0);
-    
+
     // Get user's labour IDs for salary records
     const labours = await prisma.labour.findMany({
       where: { userId },
@@ -155,7 +224,7 @@ exports.getExpenseTrend = async (req, res) => {
         }
       });
     }
-    
+
     const medicines = await prisma.medicine.findMany({
       where: {
         userId,
@@ -167,7 +236,7 @@ exports.getExpenseTrend = async (req, res) => {
         purchaseDate: 'asc'
       }
     });
-    
+
     const expenses = await prisma.expense.findMany({
       where: {
         userId,
@@ -179,42 +248,46 @@ exports.getExpenseTrend = async (req, res) => {
         date: 'asc'
       }
     });
-    
+
     // Combine and group by date
     const grouped = {};
-    
+
     labourPayments.forEach(payment => {
-      const dateKey = new Date(payment.paymentDate).toISOString().split('T')[0];
+      const dateKey = toDateKey(payment.paymentDate);
       if (!grouped[dateKey]) {
         grouped[dateKey] = 0;
       }
-      grouped[dateKey] += payment.paidAmount;
+      grouped[dateKey] += Number(payment.paidAmount);
     });
-    
+
     medicines.forEach(medicine => {
-      const dateKey = new Date(medicine.purchaseDate).toISOString().split('T')[0];
+      const dateKey = toDateKey(medicine.purchaseDate);
       if (!grouped[dateKey]) {
         grouped[dateKey] = 0;
       }
-      grouped[dateKey] += medicine.amount;
+      grouped[dateKey] += Number(medicine.amount);
     });
-    
+
     expenses.forEach(expense => {
-      const dateKey = new Date(expense.date).toISOString().split('T')[0];
+      const dateKey = toDateKey(expense.date);
       if (!grouped[dateKey]) {
         grouped[dateKey] = 0;
       }
-      grouped[dateKey] += expense.amount;
+      grouped[dateKey] += Number(expense.amount);
     });
-    
+
     const data = Object.entries(grouped).map(([date, amount]) => ({
       date,
       amount
     }));
-    
+
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching expense trend',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message }),
+    });
   }
 };
 
@@ -222,14 +295,32 @@ exports.getExpenseTrend = async (req, res) => {
 exports.getProfitTrend = async (req, res) => {
   try {
     const { days = 30 } = req.query;
-    
+    const userId = req.user.userId;
+
+    const parsedDays = parseDays(days);
+    if (parsedDays === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid days value',
+      });
+    }
+
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(days));
+    startDate.setDate(startDate.getDate() - parsedDays);
     startDate.setHours(0, 0, 0, 0);
-    
+
+    // Get user's labour IDs
+    const labours = await prisma.labour.findMany({
+      where: { userId },
+      select: { id: true }
+    });
+
+    const labourIds = labours.map(l => l.id);
+
     // Get sales
     const sales = await prisma.sale.findMany({
       where: {
+        userId,
         saleDate: {
           gte: startDate
         }
@@ -238,21 +329,29 @@ exports.getProfitTrend = async (req, res) => {
         saleDate: 'asc'
       }
     });
-    
-    // Get all expenses
-    const labourPayments = await prisma.salaryRecord.findMany({
-      where: {
-        paymentDate: {
-          gte: startDate
+
+    // Get labour expenses
+    let labourPayments = [];
+    if (labourIds.length > 0) {
+      labourPayments = await prisma.salaryRecord.findMany({
+        where: {
+          labourId: {
+            in: labourIds
+          },
+          paymentDate: {
+            gte: startDate
+          }
+        },
+        orderBy: {
+          paymentDate: 'asc'
         }
-      },
-      orderBy: {
-        paymentDate: 'asc'
-      }
-    });
-    
+      });
+    }
+
+    // Get medicine expenses
     const medicines = await prisma.medicine.findMany({
       where: {
+        userId,
         purchaseDate: {
           gte: startDate
         }
@@ -261,9 +360,11 @@ exports.getProfitTrend = async (req, res) => {
         purchaseDate: 'asc'
       }
     });
-    
+
+    // Get other expenses
     const expenses = await prisma.expense.findMany({
       where: {
+        userId,
         date: {
           gte: startDate
         }
@@ -272,75 +373,53 @@ exports.getProfitTrend = async (req, res) => {
         date: 'asc'
       }
     });
-    
+
     // Calculate profit per day
     const salesByDate = {};
     const expensesByDate = {};
-    
+
     sales.forEach(sale => {
-      const dateKey = new Date(sale.saleDate).toISOString().split('T')[0];
+      const dateKey = toDateKey(sale.saleDate);
       if (!salesByDate[dateKey]) salesByDate[dateKey] = 0;
-      salesByDate[dateKey] += sale.amount;
+      salesByDate[dateKey] += Number(sale.amount);
     });
-    
+
     labourPayments.forEach(payment => {
-      const dateKey = new Date(payment.paymentDate).toISOString().split('T')[0];
+      const dateKey = toDateKey(payment.paymentDate);
       if (!expensesByDate[dateKey]) expensesByDate[dateKey] = 0;
-      expensesByDate[dateKey] += payment.paidAmount;
+      expensesByDate[dateKey] += Number(payment.paidAmount);
     });
-    
+
     medicines.forEach(medicine => {
-      const dateKey = new Date(medicine.purchaseDate).toISOString().split('T')[0];
+      const dateKey = toDateKey(medicine.purchaseDate);
       if (!expensesByDate[dateKey]) expensesByDate[dateKey] = 0;
-      expensesByDate[dateKey] += medicine.amount;
+      expensesByDate[dateKey] += Number(medicine.amount);
     });
-    
+
     expenses.forEach(expense => {
-      const dateKey = new Date(expense.date).toISOString().split('T')[0];
+      const dateKey = toDateKey(expense.date);
       if (!expensesByDate[dateKey]) expensesByDate[dateKey] = 0;
-      expensesByDate[dateKey] += expense.amount;
+      expensesByDate[dateKey] += Number(expense.amount);
     });
-    
-    const allDates = new Set([...Object.keys(salesByDate), ...Object.keys(expensesByDate)]);
+
+    const allDates = new Set([
+      ...Object.keys(salesByDate),
+      ...Object.keys(expensesByDate)
+    ]);
+
     const data = Array.from(allDates)
       .sort()
       .map(date => ({
         date,
         profit: (salesByDate[date] || 0) - (expensesByDate[date] || 0)
       }));
-    
+
     res.json(data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Get expense breakdown
-exports.getExpenseBreakdown = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    
-    let dateFilter = {};
-    if (startDate || endDate) {
-      dateFilter.date = {};
-      if (startDate) dateFilter.date.gte = new Date(startDate);
-      if (endDate) dateFilter.date.lte = new Date(endDate);
-    }
-    
-    // Get expense report by type
-    const expensesByType = await prisma.expense.groupBy({
-      by: ['expenseType'],
-      where: dateFilter.date ? { date: dateFilter.date } : {},
-      _sum: { amount: true }
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching profit trend',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message }),
     });
-    
-    const breakdown = expensesByType.map(item => ({
-      type: item.expenseType,
-      amount: item._sum.amount || 0
-    }));
-    
-    res.json(breakdown);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 };

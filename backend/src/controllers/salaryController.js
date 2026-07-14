@@ -1,9 +1,24 @@
 const { PrismaClient } = require("@prisma/client");
+const rateLimit = require("express-rate-limit");
 const prisma = new PrismaClient();
+
+// Helper: validate positive integer IDs
+const isValidId = (id) => {
+  const parsed = Number(id);
+  return Number.isInteger(parsed) && parsed > 0;
+};
+
+// Rate limiter for salary routes
+exports.salaryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
 
 // Create a new salary record
 exports.createSalaryRecord = async (req, res) => {
   try {
+    const userId = req.user.userId;
+
     const {
       labourId,
       salaryAmount,
@@ -15,29 +30,64 @@ exports.createSalaryRecord = async (req, res) => {
     } = req.body;
 
     // Validation
-    if (!labourId) {
+    if (!labourId || !isValidId(labourId)) {
       return res.status(400).json({
         success: false,
-        message: "Labour ID is required",
+        message: "Invalid labour ID",
       });
     }
 
-    if (!salaryAmount || salaryAmount <= 0) {
+    const salary = Number(salaryAmount);
+    if (isNaN(salary) || salary <= 0) {
       return res.status(400).json({
         success: false,
         message: "Salary amount must be greater than 0",
       });
     }
 
-    if (paidAmount < 0) {
+    if (salary > 1000000000) {
+      return res.status(400).json({
+        success: false,
+        message: "Salary amount too large",
+      });
+    }
+
+    const paid = Number(paidAmount);
+    if (isNaN(paid) || paid < 0) {
       return res.status(400).json({
         success: false,
         message: "Paid amount cannot be negative",
       });
     }
 
+    if (paid > salary) {
+      return res.status(400).json({
+        success: false,
+        message: "Paid amount cannot exceed salary amount",
+      });
+    }
+
+    if (notes && notes.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: "Notes cannot exceed 1000 characters",
+      });
+    }
+
     const fromDate = new Date(periodFromDate);
     const toDate = new Date(periodToDate);
+    const payDate = new Date(paymentDate);
+
+    if (
+      isNaN(fromDate.getTime()) ||
+      isNaN(toDate.getTime()) ||
+      isNaN(payDate.getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format",
+      });
+    }
 
     if (fromDate >= toDate) {
       return res.status(400).json({
@@ -51,23 +101,25 @@ exports.createSalaryRecord = async (req, res) => {
       where: { id: parseInt(labourId) },
     });
 
-    if (!labour) {
-      return res.status(404).json({
+    if (!labour || labour.userId !== userId) {
+      return res.status(403).json({
         success: false,
-        message: "Labour not found",
+        message: "Unauthorized: Labour not found",
       });
     }
 
-    const salaryRecord = await prisma.salaryRecord.create({
-      data: {
-        labourId: parseInt(labourId),
-        salaryAmount: parseFloat(salaryAmount),
-        periodFromDate: fromDate,
-        periodToDate: toDate,
-        paymentDate: new Date(paymentDate),
-        paidAmount: parseFloat(paidAmount),
-        notes: notes?.trim() || null,
-      },
+    const salaryRecord = await prisma.$transaction(async (tx) => {
+      return tx.salaryRecord.create({
+        data: {
+          labourId: parseInt(labourId),
+          salaryAmount: salary,
+          periodFromDate: fromDate,
+          periodToDate: toDate,
+          paymentDate: payDate,
+          paidAmount: paid,
+          notes: notes?.trim() || null,
+        },
+      });
     });
 
     res.status(201).json({
@@ -79,7 +131,9 @@ exports.createSalaryRecord = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error creating salary record",
-      error: error.message,
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+      }),
     });
   }
 };
@@ -90,9 +144,16 @@ exports.getSalaryRecordsByLabour = async (req, res) => {
     const { labourId } = req.params;
     const userId = req.user.userId;
 
+    if (!isValidId(labourId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid labour ID",
+      });
+    }
+
     // Verify labour belongs to user
     const labour = await prisma.labour.findUnique({
-      where: { id: parseInt(labourId) }
+      where: { id: parseInt(labourId) },
     });
 
     if (!labour || labour.userId !== userId) {
@@ -102,25 +163,41 @@ exports.getSalaryRecordsByLabour = async (req, res) => {
       });
     }
 
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+
     const salaryRecords = await prisma.salaryRecord.findMany({
       where: { labourId: parseInt(labourId) },
       include: {
-        labour: true,
+        labour: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true,
+            userId: true,
+          },
+        },
       },
       orderBy: {
         periodFromDate: "desc",
       },
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
     res.json({
       success: true,
       data: salaryRecords,
+      page,
+      limit,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error fetching salary records",
-      error: error.message,
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+      }),
     });
   }
 };
@@ -134,9 +211,16 @@ exports.getAllSalaryRecords = async (req, res) => {
     let whereClause = {};
 
     if (labourId) {
+      if (!isValidId(labourId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid labour ID",
+        });
+      }
+
       // Verify labour belongs to user
       const labour = await prisma.labour.findUnique({
-        where: { id: parseInt(labourId) }
+        where: { id: parseInt(labourId) },
       });
 
       if (!labour || labour.userId !== userId) {
@@ -151,9 +235,9 @@ exports.getAllSalaryRecords = async (req, res) => {
       // Get all labours for this user, then get their salary records
       const labours = await prisma.labour.findMany({
         where: { userId },
-        select: { id: true }
+        select: { id: true },
       });
-      const labourIds = labours.map(l => l.id);
+      const labourIds = labours.map((l) => l.id);
       if (labourIds.length > 0) {
         whereClause.labourId = { in: labourIds };
       } else {
@@ -166,34 +250,63 @@ exports.getAllSalaryRecords = async (req, res) => {
     }
 
     if (fromDate || toDate) {
-      whereClause.periodFromDate = {};
-      if (fromDate) {
-        whereClause.periodFromDate.gte = new Date(fromDate);
+      const parsedFromDate = fromDate ? new Date(fromDate) : null;
+      const parsedToDate = toDate ? new Date(toDate) : null;
+
+      if (
+        (parsedFromDate && isNaN(parsedFromDate.getTime())) ||
+        (parsedToDate && isNaN(parsedToDate.getTime()))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format",
+        });
       }
-      if (toDate) {
-        whereClause.periodFromDate.lte = new Date(toDate);
+
+      whereClause.periodFromDate = {};
+      if (parsedFromDate) {
+        whereClause.periodFromDate.gte = parsedFromDate;
+      }
+      if (parsedToDate) {
+        whereClause.periodFromDate.lte = parsedToDate;
       }
     }
+
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
 
     const salaryRecords = await prisma.salaryRecord.findMany({
       where: whereClause,
       include: {
-        labour: true,
+        labour: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true,
+            userId: true,
+          },
+        },
       },
       orderBy: {
         periodFromDate: "desc",
       },
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
     res.json({
       success: true,
       data: salaryRecords,
+      page,
+      limit,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error fetching salary records",
-      error: error.message,
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+      }),
     });
   }
 };
@@ -204,10 +317,24 @@ exports.getSalaryRecordById = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
 
+    if (!isValidId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid salary record ID",
+      });
+    }
+
     const salaryRecord = await prisma.salaryRecord.findUnique({
       where: { id: parseInt(id) },
       include: {
-        labour: true,
+        labour: {
+          select: {
+            id: true,
+            name: true,
+            mobile: true,
+            userId: true,
+          },
+        },
       },
     });
 
@@ -226,7 +353,9 @@ exports.getSalaryRecordById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching salary record",
-      error: error.message,
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+      }),
     });
   }
 };
@@ -245,10 +374,17 @@ exports.updateSalaryRecord = async (req, res) => {
       notes,
     } = req.body;
 
+    if (!isValidId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid salary record ID",
+      });
+    }
+
     // Get salary record with labour to verify ownership
     const salaryRecord = await prisma.salaryRecord.findUnique({
       where: { id: parseInt(id) },
-      include: { labour: true }
+      include: { labour: true },
     });
 
     if (!salaryRecord || salaryRecord.labour.userId !== userId) {
@@ -258,35 +394,126 @@ exports.updateSalaryRecord = async (req, res) => {
       });
     }
 
-    // Validation
-    if (salaryAmount && salaryAmount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Salary amount must be greater than 0",
-      });
-    }
-
-    if (paidAmount !== undefined && paidAmount < 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Paid amount cannot be negative",
-      });
-    }
-
     const updateData = {};
-    if (salaryAmount) updateData.salaryAmount = parseFloat(salaryAmount);
-    if (periodFromDate) updateData.periodFromDate = new Date(periodFromDate);
-    if (periodToDate) updateData.periodToDate = new Date(periodToDate);
-    if (paymentDate) updateData.paymentDate = new Date(paymentDate);
-    if (paidAmount !== undefined) updateData.paidAmount = parseFloat(paidAmount);
-    if (notes !== undefined) updateData.notes = notes?.trim() || null;
 
-    const updatedRecord = await prisma.salaryRecord.update({
-      where: { id: parseInt(id) },
-      data: updateData,
-      include: {
-        labour: true,
-      },
+    // Validation
+    if (salaryAmount !== undefined) {
+      const salary = Number(salaryAmount);
+
+      if (isNaN(salary) || salary <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid salary amount",
+        });
+      }
+
+      if (salary > 1000000000) {
+        return res.status(400).json({
+          success: false,
+          message: "Salary amount too large",
+        });
+      }
+
+      updateData.salaryAmount = salary;
+    }
+
+    if (paidAmount !== undefined) {
+      const paid = Number(paidAmount);
+      if (isNaN(paid) || paid < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Paid amount cannot be negative",
+        });
+      }
+      updateData.paidAmount = paid;
+    }
+
+    // Paid amount cannot exceed salary (use updated value if provided, else existing)
+    const effectiveSalary =
+      updateData.salaryAmount !== undefined
+        ? updateData.salaryAmount
+        : salaryRecord.salaryAmount;
+    const effectivePaid =
+      updateData.paidAmount !== undefined
+        ? updateData.paidAmount
+        : salaryRecord.paidAmount;
+
+    if (effectivePaid > effectiveSalary) {
+      return res.status(400).json({
+        success: false,
+        message: "Paid amount cannot exceed salary amount",
+      });
+    }
+
+    if (notes !== undefined) {
+      if (notes && notes.length > 1000) {
+        return res.status(400).json({
+          success: false,
+          message: "Notes cannot exceed 1000 characters",
+        });
+      }
+      updateData.notes = notes?.trim() || null;
+    }
+
+    if (periodFromDate !== undefined) {
+      const parsed = new Date(periodFromDate);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format",
+        });
+      }
+      updateData.periodFromDate = parsed;
+    }
+
+    if (periodToDate !== undefined) {
+      const parsed = new Date(periodToDate);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format",
+        });
+      }
+      updateData.periodToDate = parsed;
+    }
+
+    if (paymentDate !== undefined) {
+      const parsed = new Date(paymentDate);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format",
+        });
+      }
+      updateData.paymentDate = parsed;
+    }
+
+    // Ensure fromDate < toDate using effective values
+    const newFromDate = updateData.periodFromDate || salaryRecord.periodFromDate;
+    const newToDate = updateData.periodToDate || salaryRecord.periodToDate;
+
+    if (newFromDate >= newToDate) {
+      return res.status(400).json({
+        success: false,
+        message: "From date must be before to date",
+      });
+    }
+
+    const updatedRecord = await prisma.$transaction(async (tx) => {
+      return tx.salaryRecord.update({
+        where: { id: parseInt(id) },
+        data: updateData,
+        include: {
+          labour: {
+            select: {
+              id: true,
+              name: true,
+              mobile: true,
+              userId: true,
+            },
+          },
+        },
+      });
     });
 
     res.json({
@@ -304,7 +531,9 @@ exports.updateSalaryRecord = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error updating salary record",
-      error: error.message,
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+      }),
     });
   }
 };
@@ -315,10 +544,17 @@ exports.deleteSalaryRecord = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
 
+    if (!isValidId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid salary record ID",
+      });
+    }
+
     // Get salary record with labour to verify ownership
     const salaryRecord = await prisma.salaryRecord.findUnique({
       where: { id: parseInt(id) },
-      include: { labour: true }
+      include: { labour: true },
     });
 
     if (!salaryRecord || salaryRecord.labour.userId !== userId) {
@@ -328,8 +564,10 @@ exports.deleteSalaryRecord = async (req, res) => {
       });
     }
 
-    await prisma.salaryRecord.delete({
-      where: { id: parseInt(id) },
+    await prisma.$transaction(async (tx) => {
+      await tx.salaryRecord.delete({
+        where: { id: parseInt(id) },
+      });
     });
 
     res.json({
@@ -346,7 +584,9 @@ exports.deleteSalaryRecord = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error deleting salary record",
-      error: error.message,
+      ...(process.env.NODE_ENV === "development" && {
+        error: error.message,
+      }),
     });
   }
 };

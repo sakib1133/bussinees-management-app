@@ -19,9 +19,10 @@ export async function registerServiceWorker() {
   try {
     console.log('[PWA] Registering service worker...');
     
-    swRegistration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-    });
+   swRegistration = await navigator.serviceWorker.register('/sw.js', {
+  scope: '/',
+  updateViaCache: 'none'
+});
 
     console.log('[PWA] Service Worker registered successfully:', swRegistration);
 

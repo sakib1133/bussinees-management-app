@@ -118,9 +118,21 @@ exports.createExpense = async (req, res) => {
     const userId = req.user.userId;
     
     if (!expenseType || !amount || !date) {
-      return res.status(400).json({ error: 'expenseType, amount, and date are required' });
-    }
-    
+      if (amount <= 0 || amount > 1000000000) {
+  return res.status(400).json({
+    error: 'Invalid amount'
+  });
+}
+  return res.status(400).json({
+    error: 'expenseType, amount, and date are required'
+  });
+}
+
+if (amount <= 0) {
+  return res.status(400).json({
+    error: 'Amount must be greater than 0'
+  });
+}
     const expense = await prisma.expense.create({
       data: {
         userId,

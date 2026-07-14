@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 require('dotenv').config();
-
 const authRoutes = require('./routes/authRoutes');
 const salesRoutes = require('./routes/salesRoutes');
 const medicineRoutes = require('./routes/medicineRoutes');
@@ -12,7 +12,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
-
+app.use(helmet());
 // CORS Configuration
 const allowedOrigins = [
   'http://localhost:3000',
@@ -43,8 +43,12 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+
+app.use(express.urlencoded({
+  extended: true,
+  limit: '1mb'
+}));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sales', salesRoutes);

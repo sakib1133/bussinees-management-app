@@ -1,6 +1,6 @@
-const CACHE_NAME = 'bms-v1';
-const RUNTIME_CACHE = 'bms-runtime-v1';
-const API_CACHE = 'bms-api-v1';
+const CACHE_NAME = 'bms-v2';
+const RUNTIME_CACHE = 'bms-runtime-v2';
+const API_CACHE = 'bms-api-v2';
 const OFFLINE_PAGE = '/offline.html';
 
 // Assets that should be cached on install
@@ -105,9 +105,9 @@ self.addEventListener('fetch', (event) => {
 
   // Navigation requests - Network first for iOS PWA compatibility
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirstStrategy(request));
-    return;
-  }
+  event.respondWith(navigationStrategy(request));
+  return;
+}
 
   // Default - Stale while revalidate
   event.respondWith(staleWhileRevalidateStrategy(request));
@@ -155,7 +155,7 @@ async function networkFirstStrategy(request) {
     // Cache ONLY successful responses (2xx), never cache errors (4xx, 5xx)
     if (networkResponse.ok && networkResponse.status >= 200 && networkResponse.status < 400) {
       const cache = await caches.open(API_CACHE);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
     }
     
     return networkResponse;
@@ -197,7 +197,8 @@ async function cacheFirstStrategy(request) {
     // Cache ONLY successful responses, never errors
     if (networkResponse.ok && networkResponse.status >= 200 && networkResponse.status < 400) {
       const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, networkResponse.clone());
+await cache.put(request, networkResponse.clone());
+return networkResponse;
     }
     
     return networkResponse;
@@ -215,8 +216,8 @@ async function navigationStrategy(request) {
     
     if (networkResponse.ok) {
       const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(request, networkResponse.clone());
-      return networkResponse;
+await cache.put(request, networkResponse.clone());
+return networkResponse;
     }
     
     return networkResponse;

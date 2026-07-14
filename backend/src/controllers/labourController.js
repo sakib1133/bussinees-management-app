@@ -243,7 +243,14 @@ exports.deleteLabour = async (req, res) => {
 // Get labour summary (for dashboard)
 exports.getLabourSummary = async (req, res) => {
   try {
+    const userId = req.user.userId;
+
     const result = await prisma.salaryRecord.aggregate({
+      where: {
+        labour: {
+          userId: userId,
+        },
+      },
       _sum: {
         paidAmount: true,
       },
@@ -258,10 +265,11 @@ exports.getLabourSummary = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Labour summary error:", error);
+
     res.status(500).json({
       success: false,
       message: "Error fetching labour summary",
-      error: error.message,
     });
   }
 };

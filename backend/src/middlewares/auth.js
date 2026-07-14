@@ -11,8 +11,18 @@ const auth = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+  algorithms: ['HS256']
+});
+
+if (!decoded || typeof decoded.userId !== 'number') {
+  return res.status(401).json({
+    success: false,
+    message: 'Token is invalid.'
+  });
+}
+
+req.user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({
