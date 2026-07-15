@@ -8,7 +8,7 @@ try {
 const { contractorName, amount, saleDate, description } = req.body;
 const userId = req.user.userId;
 
-```
+
 // Validation
 if (!contractorName || !amount || !saleDate) {
   return res.status(400).json({
@@ -62,7 +62,6 @@ res.status(201).json({
   message: 'Sale created successfully.',
   data: sale
 });
-```
 
 } catch (error) {
 console.error('Create sale error:', error);
@@ -77,8 +76,6 @@ message: 'Internal server error.'
 const getAllSales = async (req, res) => {
 try {
 const userId = req.user.userId;
-
-```
 const sales = await prisma.sale.findMany({
   where: { userId },
   orderBy: { saleDate: 'desc' },
@@ -97,7 +94,7 @@ res.status(200).json({
   success: true,
   data: sales
 });
-```
+
 
 } catch (error) {
 console.error('Get all sales error:', error);
@@ -114,7 +111,7 @@ try {
 const { id } = req.params;
 const userId = req.user.userId;
 
-```
+
 if (isNaN(parseInt(id))) {
   return res.status(400).json({
     success: false,
@@ -137,7 +134,7 @@ res.status(200).json({
   success: true,
   data: sale
 });
-```
+
 
 } catch (error) {
 console.error('Get sale by id error:', error);
@@ -155,7 +152,7 @@ const { id } = req.params;
 const { contractorName, amount, saleDate, description } = req.body;
 const userId = req.user.userId;
 
-```
+
 if (isNaN(parseInt(id))) {
   return res.status(400).json({
     success: false,
@@ -233,7 +230,7 @@ res.status(200).json({
   message: 'Sale updated successfully.',
   data: updatedSale
 });
-```
+
 
 } catch (error) {
 console.error('Update sale error:', error);
@@ -250,7 +247,6 @@ try {
 const { id } = req.params;
 const userId = req.user.userId;
 
-```
 if (isNaN(parseInt(id))) {
   return res.status(400).json({
     success: false,
@@ -277,7 +273,7 @@ res.status(200).json({
   success: true,
   message: 'Sale deleted successfully.'
 });
-```
+
 
 } catch (error) {
 console.error('Delete sale error:', error);
