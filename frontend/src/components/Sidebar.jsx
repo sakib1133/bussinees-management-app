@@ -32,6 +32,7 @@ const Sidebar = ({ onClose }) => {
       </div>
 
       <div className="flex flex-col h-full">
+        {/* Top navigation */}
         <div className="space-y-1 sm:space-y-2">
           {menuItems.map((item) => (
             <Link
@@ -50,11 +51,15 @@ const Sidebar = ({ onClose }) => {
           ))}
         </div>
 
+        {/* Grow empty space so divider + About/Support stay anchored to bottom */}
+        <div className="flex-1" />
+
         {/* Divider / spacing before bottom navigation */}
         <div className="mt-4 sm:mt-6 mb-2">
           <div className="h-px bg-gray-700" />
         </div>
 
+        {/* Bottom navigation */}
         <div className="space-y-1 sm:space-y-2">
           {bottomMenuItems.map((item) => (
             <Link
