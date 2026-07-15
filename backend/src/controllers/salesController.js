@@ -76,6 +76,8 @@ message: 'Internal server error.'
 const getAllSales = async (req, res) => {
 try {
 const userId = req.user.userId;
+
+
 const sales = await prisma.sale.findMany({
   where: { userId },
   orderBy: { saleDate: 'desc' },
@@ -273,7 +275,6 @@ res.status(200).json({
   success: true,
   message: 'Sale deleted successfully.'
 });
-
 
 } catch (error) {
 console.error('Delete sale error:', error);
