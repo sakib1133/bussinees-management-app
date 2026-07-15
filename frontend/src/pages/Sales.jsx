@@ -12,9 +12,11 @@ const Sales = () => {
   const [formData, setFormData] = useState({
     contractorName: '',
     amount: '',
+    count: '',
     saleDate: '',
     description: ''
   });
+
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -58,12 +60,17 @@ const Sales = () => {
       setFormError('Amount must be greater than 0');
       return false;
     }
+    if (!formData.count || parseInt(formData.count, 10) <= 0) {
+      setFormError('Count must be greater than 0');
+      return false;
+    }
     if (!formData.saleDate) {
       setFormError('Sale date is required');
       return false;
     }
     return true;
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,9 +84,11 @@ const Sales = () => {
         const response = await api.put(`/sales/${editingId}`, {
           contractorName: formData.contractorName,
           amount: parseFloat(formData.amount),
+          count: parseInt(formData.count, 10),
           saleDate: formData.saleDate,
           description: formData.description || null
         });
+
         
         if (response.data.success) {
           setSales(sales.map(s => s.id === editingId ? response.data.data : s));
@@ -92,9 +101,11 @@ const Sales = () => {
         const response = await api.post('/sales', {
           contractorName: formData.contractorName,
           amount: parseFloat(formData.amount),
+          count: parseInt(formData.count, 10),
           saleDate: formData.saleDate,
           description: formData.description || null
         });
+
         
         if (response.data.success) {
           setSales([response.data.data, ...sales]);
@@ -115,9 +126,11 @@ const Sales = () => {
     setFormData({
       contractorName: sale.contractorName,
       amount: sale.amount.toString(),
+      count: (sale.count ?? 0).toString(),
       saleDate: sale.saleDate.split('T')[0],
       description: sale.description || ''
     });
+
     setShowForm(true);
   };
 
@@ -138,12 +151,14 @@ const Sales = () => {
     setFormData({
       contractorName: '',
       amount: '',
+      count: '',
       saleDate: '',
       description: ''
     });
     setFormError('');
     setEditingId(null);
   };
+
 
   const handleCancel = () => {
     setShowForm(false);
@@ -236,6 +251,22 @@ const Sales = () => {
 
                   <div>
                     <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Count *
+                    </label>
+                    <input
+                      type="number"
+                      name="count"
+                      value={formData.count}
+                      onChange={handleFormChange}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
+                      placeholder="Enter count"
+                      step="1"
+                      disabled={formLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                       Sale Date *
                     </label>
                     <input
@@ -247,6 +278,7 @@ const Sales = () => {
                       disabled={formLoading}
                     />
                   </div>
+
 
                   <div>
                     <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
@@ -314,7 +346,9 @@ const Sales = () => {
                     <tr>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700">Contractor</th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-gray-700">Amount</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-gray-700">Count</th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700">Date</th>
+
                       <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 hidden sm:table-cell">Description</th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-gray-700 hidden md:table-cell">Created</th>
                       <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-semibold text-gray-700">Actions</th>
@@ -325,7 +359,9 @@ const Sales = () => {
                       <tr key={sale.id} className="border-b border-gray-200 hover:bg-gray-50">
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-800 font-medium truncate">{sale.contractorName}</td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-800 font-semibold text-right">₹{sale.amount.toFixed(2)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 whitespace-nowrap">{sale.count}</td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 whitespace-nowrap">{formatDate(sale.saleDate)}</td>
+
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 hidden sm:table-cell truncate">{sale.description || '-'}</td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-gray-600 hidden md:table-cell whitespace-nowrap text-xs">{formatDate(sale.createdAt)}</td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3">

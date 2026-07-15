@@ -18,6 +18,15 @@ const sortOptions = [
   { value: 'lowest', label: 'Lowest Cost First' }
 ];
 
+const emptyForm = {
+  medicineName: '',
+  amount: '',
+  purchaseDate: '',
+  purchasedBy: '',
+  quantity: '',
+  notes: ''
+};
+
 const Medicine = () => {
   const [summary, setSummary] = useState({
     totalMedicineExpense: 0,
@@ -34,19 +43,15 @@ const Medicine = () => {
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [detailsTarget, setDetailsTarget] = useState(null);
-  const [formData, setFormData] = useState({
-    medicineName: '',
-    amount: '',
-    purchaseDate: '',
-    purchasedBy: '',
-    quantity: '',
-    notes: ''
-  });
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formData, setFormData] = useState(emptyForm);
+
   const [search, setSearch] = useState('');
   const [quickFilter, setQuickFilter] = useState('');
   const [sort, setSort] = useState('newest');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     fetchSummary();
@@ -104,16 +109,17 @@ const Medicine = () => {
     }
   };
 
-  const resetForm = () => {
+  const openAddDrawer = () => {
     setEditingId(null);
-    setFormData({
-      medicineName: '',
-      amount: '',
-      purchaseDate: '',
-      purchasedBy: '',
-      quantity: '',
-      notes: ''
-    });
+    setFormData(emptyForm);
+    setFormError('');
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setEditingId(null);
+    setFormData(emptyForm);
     setFormError('');
   };
 
@@ -146,7 +152,6 @@ const Medicine = () => {
       setFormError(validationError);
       return;
     }
-
     try {
       setFormLoading(true);
       const payload = {
@@ -157,13 +162,11 @@ const Medicine = () => {
         quantity: formData.quantity.trim() || null,
         notes: formData.notes.trim() || null
       };
-
       const response = editingId
         ? await api.put(`/medicines/${editingId}`, payload)
         : await api.post('/medicines', payload);
-
       if (response.data.success) {
-        resetForm();
+        closeDrawer();
         fetchMedicines();
         fetchSummary();
       }
@@ -189,6 +192,8 @@ const Medicine = () => {
           quantity: medicine.quantity || '',
           notes: medicine.notes || ''
         });
+        setFormError('');
+        setDrawerOpen(true);
       }
     } catch (err) {
       setError('Failed to load medicine details for edit');
@@ -209,37 +214,140 @@ const Medicine = () => {
     }
   };
 
-  const handleView = (id) => {
-    setDetailsTarget(id);
-  };
-
   const formatDate = (value) => {
     if (!value) return '-';
     return new Date(value).toLocaleDateString('en-IN');
   };
 
+  const hasDateFilter = startDate || endDate;
+  const activeFilterCount = [search, quickFilter, hasDateFilter ? 1 : null]
+    .filter(Boolean).length;
+
   return (
     <Layout>
       <div className="p-3 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Medicine Management</h2>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">Manage medicine purchases and expenses.</p>
+
+          {/* ── Page Header ── */}
+          <div className="flex flex-col gap-3 mb-6 sm:mb-8">
+            {/* Title row + Add button */}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Medicine Management</h2>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Manage medicine purchases and expenses.</p>
+              </div>
+              <button
+                type="button"
+                onClick={openAddDrawer}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-semibold shadow-sm flex-shrink-0"
+              >
+                <span className="text-lg leading-none">+</span>
+                <span className="hidden sm:inline">Add Medicine</span>
+                <span className="sm:hidden">Add</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={resetForm}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm sm:text-base font-medium"
-            >
-              Reset Form
-            </button>
+
+            {/* ── Search + Filter bar ── */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              {/* Search */}
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                  placeholder="Search by medicine name..."
+                />
+              </div>
+
+              {/* Quick Filter */}
+              <select
+                value={quickFilter}
+                onChange={(e) => setQuickFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white min-w-[130px]"
+              >
+                <option value="">All Time</option>
+                {quickFilters.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+
+              {/* Sort */}
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white min-w-[150px]"
+              >
+                {sortOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+
+              {/* Date range toggle (hidden when quick filter active) */}
+              {!quickFilter && (
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm font-medium transition flex-shrink-0 ${
+                    hasDateFilter
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Date
+                  {hasDateFilter && <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />}
+                </button>
+              )}
+            </div>
+
+            {/* Date range row (collapsible) */}
+            {!quickFilter && filtersOpen && (
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                <div className="flex items-center gap-2 flex-1">
+                  <label className="text-xs font-semibold text-gray-500 whitespace-nowrap w-16">From</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-2 flex-1">
+                  <label className="text-xs font-semibold text-gray-500 whitespace-nowrap w-16">To</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                  />
+                </div>
+                {hasDateFilter && (
+                  <button
+                    type="button"
+                    onClick={() => { setStartDate(''); setEndDate(''); }}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium px-2"
+                  >
+                    Clear dates
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+          {/* ── End Header ── */}
 
           {/* Error Alert */}
           {error && (
-            <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm sm:text-base">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -252,183 +360,22 @@ const Medicine = () => {
             <SummaryCard label="This Month Expense" value={summary.thisMonthExpense} loading={summaryLoading} />
           </div>
 
-          {/* Add Medicine Form */}
-          <section className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 mb-6 sm:mb-8">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-6">Add Medicine</h3>
-            {formError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                {formError}
-              </div>
-            )}
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Medicine Name</label>
-                  <input
-                    type="text"
-                    name="medicineName"
-                    value={formData.medicineName}
-                    onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                    placeholder="Paracetamol"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Cost (₹)</label>
-                  <input
-                    type="number"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                    placeholder="500"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Purchase Date</label>
-                  <input
-                    type="date"
-                    name="purchaseDate"
-                    value={formData.purchaseDate}
-                    onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Purchased By</label>
-                  <input
-                    type="text"
-                    name="purchasedBy"
-                    value={formData.purchasedBy}
-                    onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                    placeholder="Ramesh"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Quantity</label>
-                  <input
-                    type="text"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                    placeholder="e.g., 10 boxes"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Notes</label>
-                  <input
-                    type="text"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    className="w-full rounded-lg border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                    placeholder="Any notes"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition text-sm sm:text-base font-medium"
-                >
-                  Clear Form
-                </button>
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="px-4 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 text-sm sm:text-base font-medium"
-                >
-                  {formLoading ? 'Saving...' : editingId ? 'Update Medicine' : 'Add Medicine'}
-                </button>
-              </div>
-            </form>
-          </section>
-
-          {/* Filters Section */}
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 mb-6 sm:mb-8">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Search</label>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                  placeholder="Search by medicine name..."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Quick Filter</label>
-                  <select
-                    value={quickFilter}
-                    onChange={(e) => setQuickFilter(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                  >
-                    <option value="">All Time</option>
-                    {quickFilters.map((f) => (
-                      <option key={f.value} value={f.value}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">Sort By</label>
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                  >
-                    {sortOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {!quickFilter && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">From Date</label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">To Date</label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm sm:text-base"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Medicines Table */}
           <section className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
             {loading ? (
               <div className="flex justify-center items-center h-40">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
               </div>
             ) : medicines.length === 0 ? (
-              <div className="p-6 sm:p-8 text-center">
-                <p className="text-gray-600 text-sm sm:text-base">No medicines found.</p>
+              <div className="p-8 text-center">
+                <p className="text-gray-500 text-sm mb-3">No medicines found.</p>
+                <button
+                  type="button"
+                  onClick={openAddDrawer}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-semibold"
+                >
+                  <span>+</span> Add your first medicine
+                </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -461,25 +408,19 @@ const Medicine = () => {
                           <div className="flex gap-1 sm:gap-2 justify-center">
                             <button
                               type="button"
-                              onClick={() => handleView(medicine.id)}
+                              onClick={() => setDetailsTarget(medicine.id)}
                               className="rounded-lg bg-gray-200 px-2 sm:px-3 py-1 text-xs sm:text-sm font-semibold text-gray-800 hover:bg-gray-300 transition"
-                            >
-                              View
-                            </button>
+                            >View</button>
                             <button
                               type="button"
                               onClick={() => handleEdit(medicine.id)}
                               className="rounded-lg bg-blue-600 px-2 sm:px-3 py-1 text-xs sm:text-sm font-semibold text-white hover:bg-blue-700 transition"
-                            >
-                              Edit
-                            </button>
+                            >Edit</button>
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(medicine.id)}
                               className="rounded-lg bg-red-600 px-2 sm:px-3 py-1 text-xs sm:text-sm font-semibold text-white hover:bg-red-700 transition"
-                            >
-                              Delete
-                            </button>
+                            >Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -490,24 +431,161 @@ const Medicine = () => {
             )}
           </section>
 
-          {/* Delete Modal */}
+          {/* ── Add / Edit Drawer ── */}
+          {/* Backdrop */}
+          {drawerOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/40 transition-opacity"
+              onClick={closeDrawer}
+            />
+          )}
+
+          {/* Slide-in panel from right */}
+          <div
+            className={`fixed top-0 right-0 h-full w-full sm:w-[420px] bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+              drawerOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            {/* Drawer header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+              <h3 className="text-lg font-bold text-gray-800">
+                {editingId ? 'Edit Medicine' : 'Add Medicine'}
+              </h3>
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition text-xl leading-none"
+                aria-label="Close drawer"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Drawer body — scrollable */}
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+              {formError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                  {formError}
+                </div>
+              )}
+              <form id="medicine-form" onSubmit={handleSave} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Medicine Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="medicineName"
+                    value={formData.medicineName}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="e.g. Paracetamol"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Cost (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={formData.amount}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="500"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Purchase Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="purchaseDate"
+                    value={formData.purchaseDate}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Purchased By <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="purchasedBy"
+                    value={formData.purchasedBy}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="e.g. Ramesh"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quantity</label>
+                  <input
+                    type="text"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="e.g. 10 boxes"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Notes</label>
+                  <input
+                    type="text"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="Any additional notes"
+                  />
+                </div>
+              </form>
+            </div>
+
+            {/* Drawer footer */}
+            <div className="flex gap-3 px-5 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="flex-1 px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="medicine-form"
+                disabled={formLoading}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 text-sm font-semibold"
+              >
+                {formLoading ? 'Saving...' : editingId ? 'Update Medicine' : 'Add Medicine'}
+              </button>
+            </div>
+          </div>
+          {/* ── End Drawer ── */}
+
+          {/* Delete Confirm Modal */}
           {deleteTarget && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className="max-w-md w-full rounded-lg bg-white p-4 sm:p-6 shadow-xl border border-gray-200">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Confirm Delete</h3>
-                <p className="text-sm sm:text-base text-gray-600 mb-6">Are you sure you want to delete this medicine record?</p>
-                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4">
+              <div className="max-w-md w-full rounded-lg bg-white p-5 shadow-xl border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Confirm Delete</h3>
+                <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this medicine record? This cannot be undone.</p>
+                <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(null)}
-                    className="flex-1 rounded-lg bg-gray-300 px-4 py-2 sm:py-3 text-gray-800 hover:bg-gray-400 transition text-sm sm:text-base"
+                    className="flex-1 rounded-lg bg-gray-200 px-4 py-2.5 text-gray-800 hover:bg-gray-300 transition text-sm"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className="flex-1 rounded-lg bg-red-600 px-4 py-2 sm:py-3 text-white hover:bg-red-700 transition text-sm sm:text-base"
+                    className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-white hover:bg-red-700 transition text-sm font-semibold"
                   >
                     Delete
                   </button>
@@ -516,18 +594,26 @@ const Medicine = () => {
             </div>
           )}
 
-          {detailsTarget && <MedicineDetails id={detailsTarget} onClose={() => setDetailsTarget(null)} />}
+          {detailsTarget && (
+            <MedicineDetails id={detailsTarget} onClose={() => setDetailsTarget(null)} />
+          )}
+
         </div>
       </div>
     </Layout>
   );
 };
 
+
 const SummaryCard = ({ label, value, loading }) => (
   <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md transition">
     <p className="text-xs sm:text-sm font-semibold text-gray-500">{label}</p>
     <p className="mt-2 sm:mt-4 text-xl sm:text-2xl font-semibold text-gray-900">
-      {loading ? 'Loading...' : typeof value === 'number' ? value.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : value}
+      {loading
+        ? 'Loading...'
+        : typeof value === 'number'
+          ? value.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
+          : value}
     </p>
   </div>
 );
@@ -542,9 +628,7 @@ const MedicineDetails = ({ id, onClose }) => {
       try {
         setLoading(true);
         const response = await api.get(`/medicines/${id}`);
-        if (response.data.success) {
-          setMedicine(response.data.data);
-        }
+        if (response.data.success) setMedicine(response.data.data);
       } catch (err) {
         setError('Failed to load medicine details');
         console.error('Medicine details error:', err);
@@ -559,13 +643,13 @@ const MedicineDetails = ({ id, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-w-2xl w-full rounded-lg bg-white p-4 sm:p-6 shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Medicine Details</h3>
+      <div className="max-w-2xl w-full rounded-lg bg-white p-5 shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-semibold text-gray-900">Medicine Details</h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-600 hover:text-gray-900 text-2xl"
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition text-xl leading-none"
           >
             ×
           </button>
@@ -573,51 +657,28 @@ const MedicineDetails = ({ id, onClose }) => {
 
         {loading ? (
           <div className="flex justify-center items-center h-40">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
           </div>
         ) : error ? (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-            {error}
-          </div>
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
         ) : medicine ? (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold">Medicine Name</p>
-                <p className="text-sm sm:text-base text-gray-900 font-medium mt-1">{medicine.medicineName}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold">Amount</p>
-                <p className="text-sm sm:text-base text-gray-900 font-medium mt-1">₹{medicine.amount.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold">Purchase Date</p>
-                <p className="text-sm sm:text-base text-gray-900 font-medium mt-1">{formatDate(medicine.purchaseDate)}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold">Purchased By</p>
-                <p className="text-sm sm:text-base text-gray-900 font-medium mt-1">{medicine.purchasedBy}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold">Quantity</p>
-                <p className="text-sm sm:text-base text-gray-900 font-medium mt-1">{medicine.quantity || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold">Created</p>
-                <p className="text-sm sm:text-base text-gray-900 font-medium mt-1">{formatDate(medicine.createdAt)}</p>
-              </div>
+              <DetailRow label="Medicine Name" value={medicine.medicineName} />
+              <DetailRow label="Amount" value={`₹${medicine.amount.toFixed(2)}`} />
+              <DetailRow label="Purchase Date" value={formatDate(medicine.purchaseDate)} />
+              <DetailRow label="Purchased By" value={medicine.purchasedBy} />
+              <DetailRow label="Quantity" value={medicine.quantity || '-'} />
+              <DetailRow label="Created" value={formatDate(medicine.createdAt)} />
             </div>
             {medicine.notes && (
-              <div>
-                <p className="text-xs sm:text-sm text-gray-500 font-semibold">Notes</p>
-                <p className="text-sm sm:text-base text-gray-900 font-medium mt-1">{medicine.notes}</p>
-              </div>
+              <DetailRow label="Notes" value={medicine.notes} />
             )}
-            <div className="flex gap-2 sm:gap-4 pt-4 border-t">
+            <div className="pt-4 border-t">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-lg bg-gray-600 px-4 py-2 sm:py-3 text-white hover:bg-gray-700 transition text-sm sm:text-base"
+                className="w-full rounded-lg bg-gray-600 px-4 py-2.5 text-white hover:bg-gray-700 transition text-sm"
               >
                 Close
               </button>
@@ -628,5 +689,12 @@ const MedicineDetails = ({ id, onClose }) => {
     </div>
   );
 };
+
+const DetailRow = ({ label, value }) => (
+  <div>
+    <p className="text-xs text-gray-500 font-semibold">{label}</p>
+    <p className="text-sm text-gray-900 font-medium mt-0.5">{value}</p>
+  </div>
+);
 
 export default Medicine;

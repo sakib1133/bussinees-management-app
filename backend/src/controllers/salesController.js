@@ -5,17 +5,20 @@ const prisma = new PrismaClient();
 // Create a new sale
 const createSale = async (req, res) => {
 try {
-const { contractorName, amount, saleDate, description } = req.body;
+const { contractorName, amount, count, saleDate, description } = req.body;
+
 const userId = req.user.userId;
 
 
 // Validation
-if (!contractorName || !amount || !saleDate) {
+if (!contractorName || !amount || !count || !saleDate) {
   return res.status(400).json({
     success: false,
-    message: 'Contractor name, amount, and sale date are required.'
+    message: 'Contractor name, amount, count, and sale date are required.'
   });
 }
+
+
 
 if (contractorName.trim().length > 100) {
   return res.status(400).json({
@@ -38,7 +41,22 @@ if (amount > 1000000000) {
   });
 }
 
+if (count <= 0) {
+  return res.status(400).json({
+    success: false,
+    message: 'Count must be greater than 0.'
+  });
+}
+
+if (count > 1000000000) {
+  return res.status(400).json({
+    success: false,
+    message: 'Count is too large.'
+  });
+}
+
 const parsedDate = new Date(saleDate);
+
 
 if (isNaN(parsedDate.getTime())) {
   return res.status(400).json({
@@ -52,10 +70,12 @@ const sale = await prisma.sale.create({
     userId,
     contractorName: contractorName.trim(),
     amount: parseFloat(amount),
+    count: parseInt(count, 10),
     saleDate: parsedDate,
     description: description?.trim() || null
   }
 });
+
 
 res.status(201).json({
   success: true,
@@ -85,8 +105,10 @@ const sales = await prisma.sale.findMany({
     id: true,
     contractorName: true,
     amount: true,
+    count: true,
     saleDate: true,
     description: true,
+
     createdAt: true,
     updatedAt: true
   }
@@ -151,7 +173,8 @@ message: 'Internal server error.'
 const updateSale = async (req, res) => {
 try {
 const { id } = req.params;
-const { contractorName, amount, saleDate, description } = req.body;
+const { contractorName, amount, count, saleDate, description } = req.body;
+
 const userId = req.user.userId;
 
 
@@ -196,7 +219,24 @@ if (amount !== undefined) {
   }
 }
 
+if (count !== undefined) {
+  if (count <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Count must be greater than 0.'
+    });
+  }
+
+  if (count > 1000000000) {
+    return res.status(400).json({
+      success: false,
+      message: 'Count is too large.'
+    });
+  }
+}
+
 let parsedDate = sale.saleDate;
+
 
 if (saleDate) {
   parsedDate = new Date(saleDate);
@@ -219,6 +259,10 @@ const updatedSale = await prisma.sale.update({
       amount !== undefined
         ? parseFloat(amount)
         : sale.amount,
+    count:
+      count !== undefined
+        ? parseInt(count, 10)
+        : sale.count,
     saleDate: parsedDate,
     description:
       description !== undefined
@@ -226,6 +270,7 @@ const updatedSale = await prisma.sale.update({
         : sale.description
   }
 });
+
 
 res.status(200).json({
   success: true,
