@@ -17,7 +17,6 @@ const Reports = () => {
   const [salesTrend, setSalesTrend] = useState([]);
   const [expenseTrend, setExpenseTrend] = useState([]);
   const [profitTrend, setProfitTrend] = useState([]);
-  const [expenseBreakdown, setExpenseBreakdown] = useState([]);
   
   const [dateFilter, setDateFilter] = useState('month');
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
@@ -68,15 +67,13 @@ const Reports = () => {
         api.get(`/reports/financial?${params}`),
         api.get(`/reports/sales-trend?${params}`),
         api.get(`/reports/expense-trend?${params}`),
-        api.get(`/reports/profit-trend?${params}`),
-        api.get(`/reports/expense-breakdown?${params}`)
+        api.get(`/reports/profit-trend?${params}`)
       ]);
 
       setFinancialData(financial.data);
       setSalesTrend(sales.data);
       setExpenseTrend(expenses.data);
       setProfitTrend(profit.data);
-      setExpenseBreakdown(breakdown.data);
     } catch (error) {
       console.error('Error fetching report data:', error);
       alert('Failed to load report data');
@@ -388,37 +385,7 @@ const Reports = () => {
           </table>
         </div>
 
-        {/* Expense Breakdown */}
-        {expenseBreakdown.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-x-auto mb-6">
-            <div className="p-4 sm:p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Expense Breakdown by Type</h3>
-            </div>
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-900">Type</th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-900">Amount</th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-900">Percentage</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenseBreakdown.map((expense, idx) => {
-                  const percentage = financialData.totalExpenses > 0 
-                    ? ((expense.amount / financialData.totalExpenses) * 100).toFixed(1)
-                    : 0;
-                  return (
-                    <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-900">{expense.type}</td>
-                      <td className="px-4 py-3 text-right font-semibold">₹{expense.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{percentage}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        
 
         {/* Chart Data (Text representation for PDF) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
