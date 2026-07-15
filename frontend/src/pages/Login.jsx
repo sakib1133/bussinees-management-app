@@ -81,6 +81,9 @@ const Login = () => {
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Password
             </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Password
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
