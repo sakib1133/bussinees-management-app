@@ -197,6 +197,8 @@ export async function checkForUpdates() {
  * Dispatch custom event for update available
  */
 function dispatchUpdateAvailable() {
+  console.log('[PWA] dispatchUpdateAvailable called');
+
   if (updateNotificationShown) {
     return;
   }
@@ -209,7 +211,6 @@ function dispatchUpdateAvailable() {
 
   window.dispatchEvent(event);
 }
-
 /**
  * Dispatch custom event for update activated
  */
