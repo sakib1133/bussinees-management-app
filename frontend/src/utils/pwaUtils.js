@@ -1,4 +1,5 @@
 // Service Worker Registration and Management
+let updateNotificationShown = false;
 let swRegistration = null;
 let updateCheckInterval = null;
 
@@ -70,9 +71,12 @@ function handleServiceWorkerUpdates() {
 
   // Listen for controller change (happens when new SW takes over)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('[PWA] Service Worker controller changed - update activated');
-    dispatchUpdateActivated();
-  });
+  console.log('[PWA] Service Worker controller changed - update activated');
+
+  updateNotificationShown = false;
+
+  dispatchUpdateActivated();
+});
 }
 
 /**
@@ -195,9 +199,16 @@ export async function checkForUpdates() {
  * Dispatch custom event for update available
  */
 function dispatchUpdateAvailable() {
+  if (updateNotificationShown) {
+    return;
+  }
+
+  updateNotificationShown = true;
+
   const event = new CustomEvent('pwa:updateavailable', {
     detail: { hasUpdate: true }
   });
+
   window.dispatchEvent(event);
 }
 
