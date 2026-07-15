@@ -25,7 +25,6 @@ self.addEventListener('install', (event) => {
         await cache.addAll(CACHE_ASSETS);
         
         // Skip waiting to activate immediately
-        await self.skipWaiting();
       } catch (error) {
         console.error('[Service Worker] Install failed:', error);
       }
