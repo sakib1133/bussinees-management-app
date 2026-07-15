@@ -1,7 +1,7 @@
 // Service Worker Registration and Management
-let updateNotificationShown = false;
 let swRegistration = null;
 let updateCheckInterval = null;
+
 
 /**
  * Register the service worker
@@ -27,8 +27,8 @@ export async function registerServiceWorker() {
 
     console.log('[PWA] Service Worker registered successfully:', swRegistration);
 
-    // Handle updates
-    handleServiceWorkerUpdates();
+  // Update notifications are driven by version.json only (single source of truth)
+  // Service Worker is used only for delivering the updated assets.
 
     // Start periodic update checks
     startUpdateChecks();
@@ -40,42 +40,9 @@ export async function registerServiceWorker() {
   }
 }
 
-/**
- * Handle service worker updates
- */
-function handleServiceWorkerUpdates() {
-  if (!swRegistration) return;
+// (Intentionally removed) SW-based “updateavailable/updateactivated” events.
+// This caused duplicate triggers and repeated popups.
 
-  // Listen for updates
-  swRegistration.addEventListener('updatefound', () => {
-    console.log('[PWA] Service Worker update found');
-
-    const newWorker = swRegistration.installing;
-    if (!newWorker) return;
-
-    newWorker.addEventListener('statechange', () => {
-      console.log('[PWA] Service Worker state changed:', newWorker.state);
-
-      // If new service worker is installed and active controller is different
-      if (
-        newWorker.state === 'installed' &&
-        navigator.serviceWorker.controller &&
-        navigator.serviceWorker.controller !== newWorker
-      ) {
-        // New service worker available, notify the app
-        console.log('[PWA] New Service Worker available for activation');
-        dispatchUpdateAvailable();
-      }
-    });
-  });
-
-  // Listen for controller change (happens when new SW takes over)
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-  console.log('[PWA] Service Worker controller changed - update activated');
-
-  dispatchUpdateActivated();
-});
-}
 
 /**
  * Start periodic checks for service worker updates
@@ -186,6 +153,9 @@ export async function checkForUpdates() {
     return;
   }
 
+  // Intentionally no “updateavailable” events; UI comes from version.json.
+
+
   try {
     await swRegistration.update();
   } catch (error) {
@@ -193,33 +163,8 @@ export async function checkForUpdates() {
   }
 }
 
-/**
- * Dispatch custom event for update available
- */
-function dispatchUpdateAvailable() {
-  console.log('[PWA] dispatchUpdateAvailable called');
+// (Intentionally removed) SW-based custom events.
 
-  if (updateNotificationShown) {
-    return;
-  }
-
-  updateNotificationShown = true;
-
-  const event = new CustomEvent('pwa:updateavailable', {
-    detail: { hasUpdate: true }
-  });
-
-  window.dispatchEvent(event);
-}
-/**
- * Dispatch custom event for update activated
- */
-function dispatchUpdateActivated() {
-  const event = new CustomEvent('pwa:updateactivated', {
-    detail: { updateActivated: true }
-  });
-  window.dispatchEvent(event);
-}
 
 /**
  * Clear all caches

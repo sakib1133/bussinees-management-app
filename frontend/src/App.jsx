@@ -17,8 +17,6 @@ import LabourDetails from './pages/LabourDetails';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 
-const APP_VERSION = '1.0.5'; // Update this when you make changes
-
 function App() {
   const [versionUpdateAvailable, setVersionUpdateAvailable] = useState(false);
 
@@ -27,18 +25,34 @@ function App() {
       document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
     };
 
+    // Only installed PWA users should see updates.
+    // If not installed, do not even check version.json to avoid any UI/event noise.
+    // If not installed, do not even check version.json.
+    const installed =
+      window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
+    if (!installed) return;
+
     const checkDeployedVersion = async () => {
       try {
-        const response = await fetch('version.json', { cache: 'no-store' });
+        // version.json is the single source of truth for “a newer deployment exists”
+        const response = await fetch('/version.json', { cache: 'no-store' });
         if (!response.ok) return;
 
         const data = await response.json();
-        const latestVersion = String(data.version || '');
+        const deployedVersion = String(data.version || '');
+        if (!deployedVersion) return;
 
-        if (latestVersion && latestVersion !== APP_VERSION) {
-          console.log(`[PWA] New deployed version available: ${latestVersion}`);
-          setVersionUpdateAvailable(true);
-        }
+
+        // Prevent repeated popup: only show when deployed version is newer than last acknowledged.
+        const lastAcknowledged = localStorage.getItem('pwa_last_ack_version');
+        const shouldShow = lastAcknowledged !== deployedVersion;
+
+        if (shouldShow) setVersionUpdateAvailable(true);
+
+        // Mark that we already evaluated the current deployed version.
+        // This avoids showing twice on rapid rerenders.
+        localStorage.setItem('pwa_checked_version', deployedVersion);
       } catch (error) {
         console.warn('[PWA] Version check failed:', error);
       }
@@ -49,22 +63,12 @@ function App() {
     window.addEventListener('orientationchange', setViewportHeight);
     checkDeployedVersion();
 
-    // Check for app updates
-    const storedVersion = localStorage.getItem('app_version');
-    
-    if (storedVersion && storedVersion !== APP_VERSION) {
-      console.log(`App updated from ${storedVersion} to ${APP_VERSION}. Reloading...`);
-      localStorage.setItem('app_version', APP_VERSION);
-      window.location.reload();
-    } else if (!storedVersion) {
-      localStorage.setItem('app_version', APP_VERSION);
-    }
-
     return () => {
       window.removeEventListener('resize', setViewportHeight);
       window.removeEventListener('orientationchange', setViewportHeight);
     };
   }, []);
+
 
   return (
     <>

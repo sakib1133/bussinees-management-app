@@ -243,26 +243,29 @@ return networkResponse;
   }
 }
 
-// Stale While Revalidate Strategy
+// Stale While Revalidate Strategy (fixed: avoid Response body reuse)
 async function staleWhileRevalidateStrategy(request) {
   const cachedResponse = await caches.match(request);
 
-  const fetchPromise = fetch(request).then(response => {
-    if (response.ok) {
-      const cache = caches.open(RUNTIME_CACHE).then(cache => {
-        cache.put(request, response.clone());
-      });
-    }
-    return response;
-  }).catch(() => {
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    throw new Error('No cached response and network failed');
-  });
+  try {
+    const networkResponse = await fetch(request);
 
-  return cachedResponse || fetchPromise;
+    // Cache exactly once, cloning only the network response.
+    if (networkResponse && networkResponse.ok) {
+      const cache = await caches.open(RUNTIME_CACHE);
+      // IMPORTANT: clone BEFORE any body consumption (we never read body here)
+      await cache.put(request, networkResponse.clone());
+    }
+
+    // Return the freshest available response (network) if possible,
+    // otherwise fall back to cached.
+    return networkResponse || cachedResponse;
+  } catch (e) {
+    if (cachedResponse) return cachedResponse;
+    throw e;
+  }
 }
+
 
 // Check if URL is a static asset
 function isStaticAsset(url) {

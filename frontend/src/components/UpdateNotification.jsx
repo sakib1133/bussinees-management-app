@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { skipWaitingAndReload, isAppInstalled } from '../utils/pwaUtils';
 
 export default function UpdateNotification({ versionUpdateAvailable = false }) {
@@ -6,37 +6,26 @@ export default function UpdateNotification({ versionUpdateAvailable = false }) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    if (versionUpdateAvailable) {
-      setUpdateAvailable(true);
-    }
+    if (versionUpdateAvailable) setUpdateAvailable(true);
   }, [versionUpdateAvailable]);
 
-  useEffect(() => {
-    // Listen for PWA update notification
-    const handleUpdateAvailable = (event) => {
-      console.log('[PWA] Update available notification received');
-      setUpdateAvailable(true);
-    };
-
-    const handleUpdateActivated = (event) => {
-      console.log('[PWA] Update activated');
-      setIsUpdating(false);
-    };
-
-    window.addEventListener('pwa:updateavailable', handleUpdateAvailable);
-    window.addEventListener('pwa:updateactivated', handleUpdateActivated);
-
-    return () => {
-      window.removeEventListener('pwa:updateavailable', handleUpdateAvailable);
-      window.removeEventListener('pwa:updateactivated', handleUpdateActivated);
-    };
-  }, []);
+  const readDeployedVersion = async () => {
+    const res = await fetch('/version.json', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const v = data?.version != null ? String(data.version) : null;
+    return v;
+  };
 
   const handleUpdate = async () => {
     setIsUpdating(true);
-    console.log('[PWA] User initiated update');
-    
     try {
+      // Acknowledge BEFORE reload so the popup won’t reappear due to SW/controller timing.
+      const deployedVersion = await readDeployedVersion();
+      if (deployedVersion) {
+        localStorage.setItem('pwa_last_ack_version', deployedVersion);
+      }
+
       await skipWaitingAndReload();
     } catch (error) {
       console.error('[PWA] Update failed:', error);
@@ -44,17 +33,23 @@ export default function UpdateNotification({ versionUpdateAvailable = false }) {
     }
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
+    // “Later” also acknowledges the currently deployed version.
     setUpdateAvailable(false);
+
+    try {
+      const deployedVersion = await readDeployedVersion();
+      if (deployedVersion) {
+        localStorage.setItem('pwa_last_ack_version', deployedVersion);
+      }
+    } catch {
+      // no-op
+    }
   };
 
-  if (!isAppInstalled()) {
-  return null;
-}
-
-if (!updateAvailable) {
-  return null;
-}
+  // Never show update UI to non-installed browser users.
+  if (!isAppInstalled()) return null;
+  if (!updateAvailable) return null;
 
   return (
     <div className="fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-50 animate-slide-down border-l-4 border-green-500">
@@ -100,3 +95,4 @@ if (!updateAvailable) {
     </div>
   );
 }
+
