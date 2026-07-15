@@ -1,6 +1,6 @@
-const CACHE_NAME = 'bms-v2';
-const RUNTIME_CACHE = 'bms-runtime-v2';
-const API_CACHE = 'bms-api-v2';
+const CACHE_NAME = 'bms-v4';
+const RUNTIME_CACHE = 'bms-runtime-v4';
+const API_CACHE = 'bms-api-v4';
 const OFFLINE_PAGE = '/offline.html';
 
 // Assets that should be cached on install
@@ -11,22 +11,27 @@ const CACHE_ASSETS = [
   '/offline.html'
 ];
 
+function logSW(...args) {
+  console.log('[Service Worker]', ...args);
+}
+
+function logSWError(...args) {
+  console.error('[Service Worker]', ...args);
+}
+
 // Install Event - Cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Install event');
-  
+  logSW('Install event');
+
   event.waitUntil(
     (async () => {
       try {
         const cache = await caches.open(CACHE_NAME);
-        console.log('[Service Worker] Caching static assets');
-        
-        // Cache critical assets
+        logSW('Caching static assets');
         await cache.addAll(CACHE_ASSETS);
-        
         // Skip waiting to activate immediately
       } catch (error) {
-        console.error('[Service Worker] Install failed:', error);
+        logSWError('Install failed:', error);
       }
     })()
   );
@@ -34,98 +39,185 @@ self.addEventListener('install', (event) => {
 
 // Activate Event - Clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activate event');
-  
+  logSW('Activate event');
+
   event.waitUntil(
     (async () => {
       try {
         const cacheNames = await caches.keys();
-        console.log('[Service Worker] Available caches:', cacheNames);
-        
-        // Delete old caches
         const cacheWhitelist = [CACHE_NAME, RUNTIME_CACHE, API_CACHE];
+
         await Promise.all(
           cacheNames
-            .filter(name => !cacheWhitelist.includes(name))
-            .map(name => {
-              console.log('[Service Worker] Deleting old cache:', name);
-              return caches.delete(name);
+            .filter((name) => !cacheWhitelist.includes(name))
+            .map(async (name) => {
+              logSW('Deleting old cache:', name);
+              await caches.delete(name);
             })
         );
-        
-        // Claim clients immediately
+
         await self.clients.claim();
-        console.log('[Service Worker] Claimed all clients');
+        logSW('Claimed all clients');
       } catch (error) {
-        console.error('[Service Worker] Activate failed:', error);
+        logSWError('Activate failed:', error);
       }
     })()
   );
 });
 
+function isNavigationRequest(request, url) {
+  // Requirements:
+  // - Routes like /, /login, /register, /dashboard, /reports, /labour etc must be handled by navigationStrategy()
+  // - Navigation requests must never reach staleWhileRevalidateStrategy()
+  // - Use:
+  //   if (request.mode === 'navigate' || request.destination === 'document')
+  try {
+    return (
+      request.mode === 'navigate' ||
+      request.destination === 'document' ||
+      // Some browsers don’t set mode/destination consistently for client-side routes.
+      // Treat same-origin requests that accept HTML as navigation.
+      (request.method === 'GET' &&
+        request.headers.get('accept')?.includes('text/html') &&
+        url.origin === self.location.origin)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isApiAuthRequest(url) {
+  return url.pathname.startsWith('/api/auth/');
+}
+
+function isApiRequest(url) {
+  return url.pathname.startsWith('/api/');
+}
+
+function isJsOrCssRequest(url) {
+  return url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+}
+
+function isStaticAssetUrl(url) {
+  const staticExtensions = [
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.svg',
+    '.woff',
+    '.woff2',
+    '.ttf',
+    '.eot',
+    '.webp',
+    '.ico',
+    '.json',
+    '.mp3',
+    '.mp4',
+    '.webm',
+    '.ogg'
+  ];
+
+  const pathname = url.pathname;
+  return staticExtensions.some((ext) => pathname.endsWith(ext));
+}
+
+async function getOfflineFallbackResponse() {
+  try {
+    const offlineResponse = await caches.match(OFFLINE_PAGE);
+    if (offlineResponse) return offlineResponse;
+  } catch (e) {
+    logSWError('Could not load offline page:', e);
+  }
+
+  // Last resort.
+  return new Response('Offline', {
+    status: 503,
+    statusText: 'Service Unavailable'
+  });
+}
+
 // Fetch Event - Smart caching strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return;
+  // Never let any fetch strategy throw an uncaught error.
+  // If anything unexpected happens, return a safe fallback Response.
+  try {
+    if (request.method !== 'GET') return;
+
+    const url = new URL(request.url);
+
+    // Skip chrome extensions
+    if (url.protocol === 'chrome-extension:') return;
+
+    // Requirements 2 + 5: Auth endpoints network-only
+    if (isApiAuthRequest(url)) {
+      event.respondWith(authNetworkOnlyStrategy(request));
+      return;
+    }
+
+    // Requirements 2: Navigation must go to navigationStrategy()
+    // Use exactly the required mode/destination checks, routing them before any staleWhileRevalidate.
+    if (
+      request.mode === 'navigate' ||
+      request.destination === 'document'
+    ) {
+      event.respondWith(navigationStrategy(request));
+      return;
+    }
+
+    if (isNavigationRequest(request, url)) {
+      event.respondWith(navigationStrategy(request));
+      return;
+    }
+
+    // API requests - keep network first with fallback
+    if (isApiRequest(url)) {
+      event.respondWith(networkFirstStrategy(request));
+      return;
+    }
+
+    // JS/CSS files - network first
+    if (isJsOrCssRequest(url)) {
+      event.respondWith(networkFirstStrategy(request));
+      return;
+    }
+
+    // Other static assets - cache first
+    if (isStaticAssetUrl(url)) {
+      event.respondWith(cacheFirstStrategy(request));
+      return;
+    }
+
+    // Default - stale while revalidate for non-navigation non-auth GETs
+    event.respondWith(staleWhileRevalidateStrategy(request));
+  } catch (err) {
+    logSWError('Fetch handler failed:', err);
+    event.respondWith(
+      new Response('Service Unavailable', {
+        status: 503,
+        statusText: 'Service Unavailable'
+      })
+    );
   }
-
-  // Skip chrome extensions
-  if (url.protocol === 'chrome-extension:') {
-    return;
-  }
-
-  // Auth endpoints - NEVER cache (Network only, no cache fallback)
-  if (url.pathname.startsWith('/api/auth/')) {
-    event.respondWith(authNetworkOnlyStrategy(request));
-    return;
-  }
-
-  // API requests - Network first with fallback
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirstStrategy(request));
-    return;
-  }
-
-  // JavaScript/CSS files - Network first (iOS PWA fix: don't cache JS with cache-first)
-  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
-    event.respondWith(networkFirstStrategy(request));
-    return;
-  }
-
-  // Other static assets - Cache first
-  if (isStaticAsset(url)) {
-    event.respondWith(cacheFirstStrategy(request));
-    return;
-  }
-
-  // Navigation requests - Network first for iOS PWA compatibility
-  if (request.mode === 'navigate') {
-  event.respondWith(navigationStrategy(request));
-  return;
-}
-
-  // Default - Stale while revalidate
-  event.respondWith(staleWhileRevalidateStrategy(request));
 });
 
 // Auth Network-Only Strategy - NEVER cache auth endpoints (critical for security)
 async function authNetworkOnlyStrategy(request) {
   try {
-    // Always go to network for auth endpoints - NO cache
     const fetchOptions = {
       credentials: 'include',
       headers: new Headers(request.headers)
     };
+
     const networkResponse = await fetch(request, fetchOptions);
+    // Never cache auth responses.
     return networkResponse;
   } catch (error) {
-    console.log('[Service Worker] Auth endpoint network request failed (CRITICAL):', request.url);
-    
-    // Return offline error - user MUST have internet for authentication
+    logSWError('Auth endpoint network request failed (CRITICAL):', request.url, error);
+
+    // Return fallback auth failure response (still a valid Response object, no throw).
     return new Response(
       JSON.stringify({
         error: 'Authentication requires internet connection',
@@ -141,32 +233,39 @@ async function authNetworkOnlyStrategy(request) {
   }
 }
 
-// Network First Strategy - For API calls
+// Network First Strategy - For API calls (never throw; always return Response)
 async function networkFirstStrategy(request) {
   try {
-    // Try network first with credentials for iOS PWA
     const fetchOptions = {
       credentials: 'include',
       headers: new Headers(request.headers)
     };
+
     const networkResponse = await fetch(request, fetchOptions);
-    
-    // Cache ONLY successful responses (2xx), never cache errors (4xx, 5xx)
-    if (networkResponse.ok && networkResponse.status >= 200 && networkResponse.status < 400) {
+
+    // Cache ONLY successful responses (2xx/3xx), never cache errors.
+    if (
+      networkResponse &&
+      networkResponse.ok &&
+      networkResponse.status >= 200 &&
+      networkResponse.status < 400
+    ) {
       const cache = await caches.open(API_CACHE);
       await cache.put(request, networkResponse.clone());
     }
-    
+
     return networkResponse;
   } catch (error) {
-    console.log('[Service Worker] Network request failed, trying cache:', request.url);
-    
+    logSWError('Network request failed, trying cache:', request.url, error);
+
     // Fall back to cache
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
+    try {
+      const cachedResponse = await caches.match(request);
+      if (cachedResponse) return cachedResponse;
+    } catch (e) {
+      logSWError('Cache match failed:', e);
     }
-    
+
     // Return error response
     return new Response(
       JSON.stringify({
@@ -182,119 +281,128 @@ async function networkFirstStrategy(request) {
   }
 }
 
-// Cache First Strategy - For static assets
+// Cache First Strategy - For static assets (never throw; always return Response)
 async function cacheFirstStrategy(request) {
-  const cachedResponse = await caches.match(request);
-  
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-
   try {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) return cachedResponse;
+
     const networkResponse = await fetch(request);
-    
-    // Cache ONLY successful responses, never errors
-    if (networkResponse.ok && networkResponse.status >= 200 && networkResponse.status < 400) {
+
+    if (
+      networkResponse &&
+      networkResponse.ok &&
+      networkResponse.status >= 200 &&
+      networkResponse.status < 400
+    ) {
       const cache = await caches.open(RUNTIME_CACHE);
-await cache.put(request, networkResponse.clone());
-return networkResponse;
+      await cache.put(request, networkResponse.clone());
+      return networkResponse;
     }
-    
+
+    // If network returns non-ok status, still return it.
     return networkResponse;
   } catch (error) {
-    console.log('[Service Worker] Cache miss and network failed:', request.url);
-    return new Response('Not found', { status: 404 });
+    logSWError('Cache miss and network failed:', request.url, error);
+    return new Response('Not found', { status: 404, statusText: 'Not Found' });
   }
 }
 
-// Navigation Strategy - For page navigation
+// Navigation Strategy - For page navigation (never throw; always return Response)
 async function navigationStrategy(request) {
   try {
-    // Try network first for HTML
+    // Try network first
     const networkResponse = await fetch(request);
-    
-    if (networkResponse.ok) {
+
+    if (networkResponse && networkResponse.ok) {
       const cache = await caches.open(RUNTIME_CACHE);
-await cache.put(request, networkResponse.clone());
-return networkResponse;
+      await cache.put(request, networkResponse.clone());
+      return networkResponse;
     }
-    
+
     return networkResponse;
   } catch (error) {
-    console.log('[Service Worker] Navigation failed, checking cache:', request.url);
-    
-    // Fall back to cached page
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
+    logSWError('Navigation failed, checking cache:', request.url, error);
 
-    // Return offline page as final fallback
+    // Fall back to cached route
     try {
-      const offlineResponse = await caches.match(OFFLINE_PAGE);
-      if (offlineResponse) {
-        return offlineResponse;
-      }
+      const cachedResponse = await caches.match(request);
+      if (cachedResponse) return cachedResponse;
     } catch (e) {
-      console.error('[Service Worker] Could not load offline page:', e);
+      logSWError('Navigation cache match failed:', e);
     }
 
-    return new Response('Offline', { status: 503 });
+    // Show offline page when navigation cannot be fulfilled.
+    return await getOfflineFallbackResponse();
   }
 }
 
-// Stale While Revalidate Strategy (fixed: avoid Response body reuse)
+// Stale While Revalidate Strategy (improved, never throw; always return Response)
 async function staleWhileRevalidateStrategy(request) {
-  const cachedResponse = await caches.match(request);
+  let cachedResponse = null;
+
+  try {
+    cachedResponse = await caches.match(request);
+  } catch (e) {
+    logSWError('StaleWhileRevalidate cache match failed:', e);
+  }
 
   try {
     const networkResponse = await fetch(request);
 
-    // Cache exactly once, cloning only the network response.
-    if (networkResponse && networkResponse.ok) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      // IMPORTANT: clone BEFORE any body consumption (we never read body here)
-      await cache.put(request, networkResponse.clone());
+    // If network succeeds, return network response and update cache.
+    if (networkResponse) {
+      // Cache only if ok
+      if (networkResponse.ok) {
+        try {
+          const cache = await caches.open(RUNTIME_CACHE);
+          await cache.put(request, networkResponse.clone());
+        } catch (e) {
+          logSWError('StaleWhileRevalidate cache put failed:', e);
+        }
+      }
+
+      return networkResponse;
     }
 
-    // Return the freshest available response (network) if possible,
-    // otherwise fall back to cached.
-    return networkResponse || cachedResponse;
-  } catch (e) {
+    // Network returned null/undefined - fall back.
     if (cachedResponse) return cachedResponse;
-    throw e;
+
+    return new Response('Network error', {
+      status: 503,
+      statusText: 'Service Unavailable'
+    });
+  } catch (e) {
+    logSWError('StaleWhileRevalidate network failed:', request.url, e);
+
+    // If network fails and cache exists, return cached response.
+    if (cachedResponse) return cachedResponse;
+
+    // If both fail, return required 503 response (never throw).
+    return new Response('Network error', {
+      status: 503,
+      statusText: 'Service Unavailable'
+    });
   }
-}
-
-
-// Check if URL is a static asset
-function isStaticAsset(url) {
-  const staticExtensions = [
-    '.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg',
-    '.woff', '.woff2', '.ttf', '.eot', '.webp', '.ico'
-  ];
-
-  const pathname = url.pathname;
-  return staticExtensions.some(ext => pathname.endsWith(ext));
 }
 
 // Message handling for update notification
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[Service Worker] Received SKIP_WAITING message');
+    logSW('Received SKIP_WAITING message');
     self.skipWaiting();
   }
 
   if (event.data && event.data.type === 'CLIENTS_CLAIM') {
-    console.log('[Service Worker] Received CLIENTS_CLAIM message');
+    logSW('Received CLIENTS_CLAIM message');
     self.clients.claim();
   }
 });
 
 // Background sync for offline actions (optional)
 self.addEventListener('sync', (event) => {
-  console.log('[Service Worker] Background sync event:', event.tag);
-  
+  logSW('Background sync event:', event.tag);
+
   if (event.tag === 'sync-data') {
     event.waitUntil(syncData());
   }
@@ -302,9 +410,10 @@ self.addEventListener('sync', (event) => {
 
 async function syncData() {
   try {
-    console.log('[Service Worker] Syncing offline data');
+    logSW('Syncing offline data');
     // Implement sync logic here if needed
   } catch (error) {
-    console.error('[Service Worker] Sync failed:', error);
+    logSWError('Sync failed:', error);
   }
 }
+
