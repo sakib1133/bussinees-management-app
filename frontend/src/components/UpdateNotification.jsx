@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { skipWaitingAndReload } from '../utils/pwaUtils';
+import { skipWaitingAndReload, isAppInstalled } from '../utils/pwaUtils';
 
 export default function UpdateNotification({ versionUpdateAvailable = false }) {
   const [updateAvailable, setUpdateAvailable] = useState(versionUpdateAvailable);
@@ -48,9 +48,13 @@ export default function UpdateNotification({ versionUpdateAvailable = false }) {
     setUpdateAvailable(false);
   };
 
-  if (!updateAvailable) {
-    return null;
-  }
+  if (!isAppInstalled()) {
+  return null;
+}
+
+if (!updateAvailable) {
+  return null;
+}
 
   return (
     <div className="fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm z-50 animate-slide-down border-l-4 border-green-500">
