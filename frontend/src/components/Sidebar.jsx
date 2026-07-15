@@ -12,6 +12,11 @@ const Sidebar = ({ onClose }) => {
     { name: 'Reports', path: '/reports', icon: '📈' }
   ];
 
+  const bottomMenuItems = [
+    { name: 'About', path: '/about', icon: 'ℹ️' },
+    { name: 'Support', path: '/support', icon: '🛟' }
+  ];
+
   return (
     <div className="w-64 h-full bg-gray-900 text-white p-3 sm:p-4 overflow-y-auto">
       <div className="mb-6 sm:mb-8 flex justify-between items-center">
@@ -26,22 +31,47 @@ const Sidebar = ({ onClose }) => {
         </button>
       </div>
 
-      <div className="space-y-1 sm:space-y-2">
-        {menuItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={onClose}
-            className={`flex items-center gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition duration-200 text-sm sm:text-base ${
-              location.pathname === item.path
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-300 hover:bg-gray-800'
-            }`}
-          >
-            <span className="text-lg sm:text-xl flex-shrink-0">{item.icon}</span>
-            <span className="truncate">{item.name}</span>
-          </Link>
-        ))}
+      <div className="flex flex-col h-full">
+        <div className="space-y-1 sm:space-y-2">
+          {menuItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition duration-200 text-sm sm:text-base ${
+                location.pathname === item.path
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:bg-gray-800'
+              }`}
+            >
+              <span className="text-lg sm:text-xl flex-shrink-0">{item.icon}</span>
+              <span className="truncate">{item.name}</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Divider / spacing before bottom navigation */}
+        <div className="mt-4 sm:mt-6 mb-2">
+          <div className="h-px bg-gray-700" />
+        </div>
+
+        <div className="space-y-1 sm:space-y-2">
+          {bottomMenuItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition duration-200 text-sm sm:text-base ${
+                location.pathname === item.path
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:bg-gray-800'
+              }`}
+            >
+              <span className="text-lg sm:text-xl flex-shrink-0">{item.icon}</span>
+              <span className="truncate">{item.name}</span>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

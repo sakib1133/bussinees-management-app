@@ -16,6 +16,8 @@ import Labour from './pages/Labour';
 import LabourDetails from './pages/LabourDetails';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
+import About from './pages/About';
+import Support from './pages/Support';
 
 function App() {
   const [versionUpdateAvailable, setVersionUpdateAvailable] = useState(false);
@@ -43,7 +45,6 @@ function App() {
         const deployedVersion = String(data.version || '');
         if (!deployedVersion) return;
 
-
         // Prevent repeated popup: only show when deployed version is newer than last acknowledged.
         const lastAcknowledged = localStorage.getItem('pwa_last_ack_version');
         const shouldShow = lastAcknowledged !== deployedVersion;
@@ -69,7 +70,6 @@ function App() {
     };
   }, []);
 
-
   return (
     <>
       <AppLoader />
@@ -78,7 +78,7 @@ function App() {
           <OfflineBanner />
           <UpdateNotification versionUpdateAvailable={versionUpdateAvailable} />
           <InstallAppButton />
-          
+
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -139,6 +139,22 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/about"
+              element={
+                <ProtectedRoute>
+                  <About />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/support"
+              element={
+                <ProtectedRoute>
+                  <Support />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
@@ -149,3 +165,4 @@ function App() {
 }
 
 export default App;
+
