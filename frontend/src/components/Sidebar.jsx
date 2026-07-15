@@ -51,11 +51,8 @@ const Sidebar = ({ onClose }) => {
           ))}
         </div>
 
-        {/* Grow empty space so divider + About/Support stay anchored to bottom */}
-        <div className="flex-1" />
-
-        {/* Divider / spacing before bottom navigation */}
-        <div className="mt-4 sm:mt-6 mb-2">
+        {/* Divider / spacing before About/Support */}
+        <div className="mt-4 sm:mt-5 mb-2">
           <div className="h-px bg-gray-700" />
         </div>
 
