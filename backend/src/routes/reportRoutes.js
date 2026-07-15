@@ -19,6 +19,6 @@ router.get('/expense-trend', reportController.getExpenseTrend);
 router.get('/profit-trend', reportController.getProfitTrend);
 
 // Get expense breakdown
-router.get('/expense-breakdown', reportController.getExpenseBreakdown);
+// router.get('/expense-breakdown', reportController.getExpenseBreakdown);
 
 module.exports = router;
