@@ -73,8 +73,6 @@ function handleServiceWorkerUpdates() {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
   console.log('[PWA] Service Worker controller changed - update activated');
 
-  updateNotificationShown = false;
-
   dispatchUpdateActivated();
 });
 }
