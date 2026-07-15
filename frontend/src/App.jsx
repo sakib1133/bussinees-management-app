@@ -47,7 +47,7 @@ function App() {
     setViewportHeight();
     window.addEventListener('resize', setViewportHeight);
     window.addEventListener('orientationchange', setViewportHeight);
-    checkDeployedVersion();
+    //checkDeployedVersion();
 
     // Check for app updates
     const storedVersion = localStorage.getItem('app_version');
