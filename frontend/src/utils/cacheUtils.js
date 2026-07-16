@@ -6,9 +6,9 @@
  */
 
 const CACHE_CONFIG = {
-  CACHE_NAME: 'bms-v4',
-  RUNTIME_CACHE: 'bms-runtime-v4',
-  API_CACHE: 'bms-api-v4',
+  CACHE_NAME: 'bms-v5',
+  RUNTIME_CACHE: 'bms-runtime-v5',
+  API_CACHE: 'bms-api-v5',
   MAX_CACHE_SIZE: 50 * 1024 * 1024, // 50MB
   CACHE_EXPIRY_DAYS: 30,
 };

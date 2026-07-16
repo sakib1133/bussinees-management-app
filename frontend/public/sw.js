@@ -1,6 +1,6 @@
-const CACHE_NAME = 'bms-v4';
-const RUNTIME_CACHE = 'bms-runtime-v4';
-const API_CACHE = 'bms-api-v4';
+const CACHE_NAME = 'bms-v45';
+const RUNTIME_CACHE = 'bms-runtime-v5';
+const API_CACHE = 'bms-api-v5';
 const OFFLINE_PAGE = '/offline.html';
 
 // Assets that should be cached on install
