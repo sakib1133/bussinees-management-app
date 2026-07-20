@@ -58,6 +58,38 @@ A full-stack **Progressive Web App (PWA)** for small business management built w
 | Reports | Analytics, trends, and business insights |
 
 ---
+## Project Structure
+```
+BusinessKhata-Digital-Ledger-for-Traders/
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── migrations/
+│   └── src/
+│       ├── controllers/
+│       ├── routes/
+│       ├── middlewares/
+│       └── utils/
+│
+├── frontend/
+│   ├── public/
+│   │   ├── icons/
+│   │   ├── sw.js
+│   │   ├── manifest.json
+│   │   └── version.json
+│   └── src/
+│       ├── components/
+│       ├── context/
+│       ├── pages/
+│       ├── services/
+│       ├── styles/
+│       └── utils/
+│
+├── render.yaml
+├── Procfile
+├── README.md
+└── .env.example
+```
 
 ## PWA Architecture
 
