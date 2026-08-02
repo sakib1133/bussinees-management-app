@@ -1,4 +1,4 @@
-# Business Khata App — PWA Business Management System
+# Business Khata App — PWA
 
 A full-stack **Progressive Web App (PWA)** for small business management built with **React, Node.js, and PostgreSQL**. Supports offline functionality, native app installation, and real-time business tracking across 6 modules with 43 REST APIs.
 
