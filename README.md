@@ -25,7 +25,6 @@ A full-stack **Progressive Web App (PWA)** for small business management built w
 - **6 Business Modules** — Dashboard, Sales, Labour, Medicine, Expenses, Reports
 - **43 REST APIs** — complete CRUD operations across all modules
 - **Offline-First Architecture** — Service Worker caches static assets, API responses, and user data
-- **Auto Updates** — hourly background update checks with zero reinstall required
 - **50–70% Faster Repeat Visits** — Service Worker serves cached assets instantly
 - **JWT Authentication** — secure token-based auth, tokens never cached by Service Worker
 - **Responsive UI** — mobile-first design optimized for low-bandwidth networks
