@@ -15,7 +15,7 @@ A full-stack **Progressive Web App (PWA)** for small business management built w
 | Database | PostgreSQL |
 | PWA | Service Worker, Web App Manifest |
 | Auth | JWT, HTTPS, CORS |
-| Deployment | Render |
+| Deployment | Render | Vercel 
 
 ---
 
